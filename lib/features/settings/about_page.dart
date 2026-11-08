@@ -9,7 +9,7 @@ import '../../core/widgets/v_surface.dart';
 import '../../platform/launcher.dart';
 
 /// The version shown in About (keep in step with pubspec.yaml).
-const String carinoVersion = '1.5.2';
+const String carinoVersion = '1.6.0';
 
 const _source = 'https://github.com/isg32/carino';
 

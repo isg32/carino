@@ -142,6 +142,46 @@ void main() {
 
   for (final ink in [InkMode.white, InkMode.black]) {
     group('${ink.name} ink', () {
+      testWidgets('Small widgets fit, two to a row', (tester) async {
+        tester.view.physicalSize = const Size(1080, 2400);
+        tester.view.devicePixelRatio = 2.625;
+        addTearDown(tester.view.reset);
+        final layout = HomeLayout(id: 'night', name: 'Night', ink: ink);
+        const all = CarinoSettings(onboarded: true);
+        SharedPreferences.setMockInitialValues({
+          'settings': jsonEncode(
+            all
+                .copyWith(widgetRows: {for (final w in all.widgets) w: 1})
+                .toJson(),
+          ),
+          'layouts': jsonEncode({
+            'layouts': [layout.toJson()],
+            'active': 'night',
+            'seeded': true,
+          }),
+        });
+        final prefs = await SharedPreferences.getInstance();
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [prefsProvider.overrideWithValue(prefs)],
+            child: CupertinoApp(
+              theme: VTheme.of(paletteFor(layout)),
+              builder: (context, child) =>
+                  LayoutTheme(layout: layout, child: child!),
+              home: const Shell(),
+            ),
+          ),
+        );
+        await tester.pump(const Duration(milliseconds: 600));
+        await tester.tap(find.bySemanticsLabel('Widgets'));
+        await tester.pump(const Duration(milliseconds: 600));
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(find.text('NOW PLAYING'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump(const Duration(seconds: 2));
+      });
+
       for (final e in screens.entries) {
         testWidgets('${e.key} opens', (tester) async {
           await open(tester, e.value(), ink: ink);

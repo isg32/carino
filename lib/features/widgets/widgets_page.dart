@@ -32,6 +32,7 @@ class WidgetsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final widgets = ref.watch(settingsProvider.select((s) => s.widgets));
+    final sizes = ref.watch(settingsProvider.select((s) => s.widgetRows));
     final top = MediaQuery.paddingOf(context).top;
     return ListView(
       padding: EdgeInsets.fromLTRB(16, top + 24, 16, bottomClearance + 20),
@@ -81,10 +82,7 @@ class WidgetsPage extends ConsumerWidget {
               ),
             ),
           ),
-        for (var i = 0; i < widgets.length; i++) ...[
-          if (i > 0) const SizedBox(height: 12),
-          _Framed(widgetKey: widgets[i], index: i),
-        ],
+        ..._arrange(widgets, sizes),
       ],
     );
   }
@@ -93,6 +91,43 @@ class WidgetsPage extends ConsumerWidget {
 /// A widget card; long-press for its menu. Cariño's own widgets sit on
 /// glass; widgets from other apps keep their own look inside a dashed frame
 /// with the app's name above.
+/// Full-width widgets one per row; small (S) built-in widgets two to a row,
+/// side by side, as Battery and Weather are in the design.
+List<Widget> _arrange(List<String> widgets, Map<String, int> sizes) {
+  bool small(String k) => WidgetKey.builtin(k) != null && sizes[k] == 1;
+  final out = <Widget>[];
+  var i = 0;
+  while (i < widgets.length) {
+    if (out.isNotEmpty) out.add(const SizedBox(height: 12));
+    if (small(widgets[i])) {
+      final pair = i + 1 < widgets.length && small(widgets[i + 1]);
+      out.add(
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _Framed(widgetKey: widgets[i], index: i),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: pair
+                    ? _Framed(widgetKey: widgets[i + 1], index: i + 1)
+                    : const SizedBox.shrink(),
+              ),
+            ],
+          ),
+        ),
+      );
+      i += pair ? 2 : 1;
+    } else {
+      out.add(_Framed(widgetKey: widgets[i], index: i));
+      i += 1;
+    }
+  }
+  return out;
+}
+
 class _Framed extends ConsumerWidget {
   const _Framed({required this.widgetKey, required this.index});
 
@@ -124,6 +159,9 @@ class _Framed extends ConsumerWidget {
     }
     final builtin = WidgetKey.builtin(widgetKey);
     if (builtin == null) return const SizedBox.shrink();
+    final compact = ref.watch(
+      settingsProvider.select((s) => s.widgetRows[widgetKey] == 1),
+    );
     return GestureDetector(
       onLongPress: menu,
       child: DecoratedBox(
@@ -135,12 +173,12 @@ class _Framed extends ConsumerWidget {
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: switch (builtin) {
-            BuiltinWidget.media => const MediaWidget(),
-            BuiltinWidget.upNext => const UpNextWidget(),
-            BuiltinWidget.clock => const ClockWidget(),
+            BuiltinWidget.media => MediaWidget(compact: compact),
+            BuiltinWidget.upNext => UpNextWidget(compact: compact),
+            BuiltinWidget.clock => ClockWidget(compact: compact),
             BuiltinWidget.weather => const WeatherWidget(),
             BuiltinWidget.battery => const BatteryWidget(),
-            BuiltinWidget.calendar => const CalendarWidget(),
+            BuiltinWidget.calendar => CalendarWidget(compact: compact),
             BuiltinWidget.notes => const NotesWidget(),
           },
         ),
@@ -223,7 +261,9 @@ class _HostedWidgetState extends ConsumerState<HostedWidget> {
                       creationParamsCodec: const StandardMessageCodec(),
                       onPlatformViewCreated: (_) => _check(),
                       gestureRecognizers: {
-                        const Factory<TapGestureRecognizer>(TapGestureRecognizer.new),
+                        const Factory<TapGestureRecognizer>(
+                          TapGestureRecognizer.new,
+                        ),
                         if (_scrolls)
                           const Factory<VerticalDragGestureRecognizer>(
                             VerticalDragGestureRecognizer.new,
@@ -254,7 +294,10 @@ String widgetName(BuiltinWidget w) => switch (w) {
 /// Now playing: whatever any app is playing, with its progress, pause and
 /// next. Reads the active media session, which needs notification access.
 class MediaWidget extends ConsumerStatefulWidget {
-  const MediaWidget({super.key});
+  const MediaWidget({super.key, this.compact = false});
+
+  /// Half width: the track and play/pause, no progress bar.
+  final bool compact;
 
   @override
   ConsumerState<MediaWidget> createState() => _MediaWidgetState();
@@ -345,6 +388,74 @@ class _MediaWidgetState extends ConsumerState<MediaWidget> {
       if (media.artist.isNotEmpty) media.artist,
       if (media.app.isNotEmpty) media.app,
     ].join(' · ');
+
+    if (widget.compact) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(child: Text('NOW PLAYING', style: VText.eyebrow)),
+              Text(
+                _time(position),
+                style: VText.doto(14, weight: 800, height: 1),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          GestureDetector(
+            onTap: Launcher.mediaOpen,
+            child: Text(
+              media.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: VText.rowTitle,
+            ),
+          ),
+          Text(
+            subtitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: VText.secondary,
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              GestureDetector(
+                onTap: () =>
+                    Launcher.mediaAction(media.playing ? 'pause' : 'play'),
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(color: ink, shape: BoxShape.circle),
+                  child: VIconView(
+                    media.playing ? VIcon.pause : VIcon.play,
+                    size: 14,
+                    strokeWidth: 2.25,
+                    color: paper,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () => Launcher.mediaAction('next'),
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: ink),
+                  ),
+                  child: const VIconView(VIcon.next, size: 14),
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -470,7 +581,10 @@ class _MediaWidgetState extends ConsumerState<MediaWidget> {
 
 /// Up next: what's left of today in the calendar, and the next alarm.
 class UpNextWidget extends ConsumerWidget {
-  const UpNextWidget({super.key});
+  const UpNextWidget({super.key, this.compact = false});
+
+  /// Half width: just the next thing.
+  final bool compact;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -512,6 +626,7 @@ class UpNextWidget extends ConsumerWidget {
       );
     }
 
+    if (compact && rows.length > 1) rows.removeRange(1, rows.length);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -520,7 +635,7 @@ class UpNextWidget extends ConsumerWidget {
             Expanded(child: Text('UP NEXT', style: VText.eyebrow)),
             if (!calendar)
               VPill(
-                'Allow calendar',
+                compact ? 'Allow' : 'Allow calendar',
                 fill: VFill.outline,
                 onTap: () => Launcher.requestPermission('calendar').then((_) {
                   ref.invalidate(permissionProvider('calendar'));
@@ -601,12 +716,37 @@ class _UpNextRow extends StatelessWidget {
 }
 
 class ClockWidget extends ConsumerWidget {
-  const ClockWidget({super.key});
+  const ClockWidget({super.key, this.compact = false});
+
+  /// Half width: the time over the day.
+  final bool compact;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final now = ref.watch(nowProvider).value ?? DateTime.now();
     final h24 = ref.watch(settingsProvider.select((s) => s.clock24));
+    if (compact) {
+      return GestureDetector(
+        onTap: () => Launcher.open('clock'),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('CLOCK', style: VText.eyebrow),
+            const SizedBox(height: 10),
+            Text(
+              DateFormat(h24 ? 'HH:mm' : 'h:mm').format(now),
+              style: VText.doto(38, weight: 800, height: 1),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              DateFormat('EEEE d').format(now).toUpperCase(),
+              style: VText.eyebrow,
+            ),
+          ],
+        ),
+      );
+    }
     return GestureDetector(
       onTap: () => Launcher.open('clock'),
       child: Row(
@@ -752,11 +892,33 @@ class BatteryWidget extends ConsumerWidget {
 }
 
 class CalendarWidget extends ConsumerWidget {
-  const CalendarWidget({super.key});
+  const CalendarWidget({super.key, this.compact = false});
+
+  /// Half width: today, big.
+  final bool compact;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final now = DateTime.now();
+    if (compact) {
+      return GestureDetector(
+        onTap: () => Launcher.open('calendar'),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              DateFormat('EEEE').format(now).toUpperCase(),
+              style: VText.eyebrow,
+            ),
+            const SizedBox(height: 8),
+            Text('${now.day}', style: VText.doto(46, weight: 800, height: 1)),
+            const SizedBox(height: 8),
+            Text(DateFormat('MMMM').format(now), style: VText.secondary),
+          ],
+        ),
+      );
+    }
     final first = DateTime(now.year, now.month);
     final days = DateTime(now.year, now.month + 1, 0).day;
     final lead = (first.weekday + 6) % 7; // Monday first
@@ -910,6 +1072,19 @@ class _WidgetMenu extends ConsumerWidget {
         children: [
           VListSection(
             children: [
+              if (builtin != null)
+                VListRow(
+                  title: 'Size',
+                  subtitle: 'S sits two to a row',
+                  trailing: VSegmented<int>(
+                    compact: true,
+                    segments: const {1: 'S', 2: 'M'},
+                    value: settings.widgetRows[key] ?? 2,
+                    onChanged: (v) => n.update(
+                      (s) => s.copyWith(widgetRows: {...s.widgetRows, key: v}),
+                    ),
+                  ),
+                ),
               if (hostedId != null)
                 VListRow(
                   title: 'Size',
