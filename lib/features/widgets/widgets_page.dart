@@ -163,8 +163,7 @@ class HostedWidget extends ConsumerWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
           child: Text(
-            (info == null ? 'Widget' : '${info.app} · ${info.label}')
-                .toUpperCase(),
+            (info?.heading ?? 'Widget').toUpperCase(),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: VText.eyebrow,
@@ -449,7 +448,7 @@ class _WidgetMenu extends ConsumerWidget {
     }
 
     return CarinoSheet(
-      eyebrow: info == null ? 'Widget' : info.app,
+      eyebrow: info == null || info.namedAfterApp ? 'Widget' : info.app,
       title: builtin != null ? widgetName(builtin) : (info?.label ?? 'Widget'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

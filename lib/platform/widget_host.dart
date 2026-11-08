@@ -35,6 +35,17 @@ class WidgetProvider {
   final int minHeight;
   final bool configurable;
 
+  /// Whether the widget's name already says which app it's from ("Clock"
+  /// from Clock, "Gmail inbox" from Gmail).
+  bool get namedAfterApp {
+    final l = label.toLowerCase();
+    final a = app.toLowerCase();
+    return l == a || l.startsWith(a) || l.endsWith(a);
+  }
+
+  /// "App · Widget", or just the widget's name when it already says the app.
+  String get heading => namedAfterApp ? label : '$app · $label';
+
   /// Rows it needs on the Widgets tab (a row is [WidgetHost.rowHeight]).
   int get rows => (minHeight / WidgetHost.rowHeight).ceil().clamp(1, 4);
 }
