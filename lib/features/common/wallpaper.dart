@@ -74,6 +74,10 @@ class WallpaperView extends StatelessWidget {
   );
 }
 
+/// Whether the blurred copy of [photo] at [blur] already exists.
+bool blurReady(String photo, double blur) =>
+    File(bakedPath(photo, blur)).existsSync();
+
 /// Where the blurred copy of [photo] at [blur] is kept.
 String bakedPath(String photo, double blur) =>
     '$photo.b${(blur * 100).round()}.png';

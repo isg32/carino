@@ -24,8 +24,8 @@ Future<Uint8List?> renderWallpaperPng(
 }) async {
   if (soft) {
     final small = ui.Size(
-      (size.width / 8).roundToDouble(),
-      (size.height / 8).roundToDouble(),
+      (size.width / 6).roundToDouble(),
+      (size.height / 6).roundToDouble(),
     );
     final tiny = await _render(layout, small);
     if (tiny == null) return null;
@@ -121,9 +121,8 @@ String wallpaperSignature(HomeLayout l, ui.Size size) => jsonEncode({
   's': [size.width.round(), size.height.round()],
 });
 
-/// Set while a wallpaper change is being worked on (blurring a photo,
-/// rendering, handing it to Android). The shell shows [BusyOverlay] over
-/// Home meanwhile, so the heavy work never shows as a stutter.
+/// Set while a blurred photo is being made, the one wallpaper step whose
+/// result you see. The shell shows [BusyOverlay] over Home meanwhile.
 final wallpaperBusy = ValueNotifier<bool>(false);
 
 Timer? _busyGuard;
@@ -134,7 +133,7 @@ void setWallpaperBusy(bool on) {
   _busyGuard?.cancel();
   wallpaperBusy.value = on;
   if (on) {
-    _busyGuard = Timer(const Duration(seconds: 15), () {
+    _busyGuard = Timer(const Duration(seconds: 10), () {
       wallpaperBusy.value = false;
     });
   }

@@ -74,7 +74,7 @@ class BusyOverlay extends StatelessWidget {
         ignoring: !on,
         child: TweenAnimationBuilder<double>(
           tween: Tween(end: on ? 1 : 0),
-          duration: Duration(milliseconds: on ? 200 : 360),
+          duration: Duration(milliseconds: on ? 120 : 180),
           curve: Curves.easeOutCubic,
           builder: (context, t, _) {
             if (t == 0) return const SizedBox.shrink();

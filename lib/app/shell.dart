@@ -77,27 +77,23 @@ class ShellState extends ConsumerState<Shell> with TickerProviderStateMixin {
     _wallpaperTimer?.cancel();
     // In Customise you may flick through layouts; set it once on the way out.
     if (_zoom.value > 0) return;
-    _wallpaperTimer = Timer(
-      Duration(milliseconds: wallpaperBusy.value ? 60 : 900),
-      _syncWallpaper,
-    );
+    _wallpaperTimer = Timer(const Duration(milliseconds: 900), _syncWallpaper);
   }
 
-  /// Sets the system home wallpaper to the active layout's, only when what
-  /// shows has changed since the last time (it is slow, and it changes the
-  /// phone's Material You colours).
+  /// Sets the system home wallpaper to the active layout's, in the
+  /// background: Cariño already shows the new wallpaper itself, so nothing
+  /// waits on this. Only when what shows has changed (it is slow, and it
+  /// recolours Material You).
   Future<void> _syncWallpaper() async {
     if (!mounted || _syncing) return;
     final layout = ref.read(activeLayoutProvider);
-    final size = View.of(context).physicalSize;
+    // A blurred copy needs no detail: a quarter of the screen is plenty,
+    // and Android scales it up for far less work than a full-size image.
+    final size = View.of(context).physicalSize / 4;
     final prefs = ref.read(prefsProvider);
     final signature = wallpaperSignature(layout, size);
-    if (prefs.getString('system_wallpaper') == signature) {
-      setWallpaperBusy(false);
-      return;
-    }
+    if (prefs.getString('system_wallpaper') == signature) return;
     _syncing = true;
-    setWallpaperBusy(true);
     try {
       final png = await renderWallpaperPng(layout, size, soft: true);
       if (png != null && await Launcher.setSystemWallpaperBytes(png, 'home')) {
@@ -107,7 +103,6 @@ class ShellState extends ConsumerState<Shell> with TickerProviderStateMixin {
       // Leave the system wallpaper as it is; the next change tries again.
     } finally {
       _syncing = false;
-      setWallpaperBusy(false);
     }
   }
 

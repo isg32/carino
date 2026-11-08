@@ -79,9 +79,9 @@ class _WallpaperSheetState extends ConsumerState<_WallpaperSheet> {
     await deletePhoto(path);
   }
 
-  /// Closes the sheet at once and does the heavy work under the busy
-  /// overlay: blurring a photo, then (through the layout change) setting
-  /// Android's wallpaper; and the lock screen if asked.
+  /// Applies at once. Only a photo blur that hasn't been made yet shows
+  /// the busy overlay (the sheet closes first); Android's own copy is set
+  /// in the background afterwards.
   Future<void> _use() async {
     final layout = _layout;
     final w = _choice ?? layout.wallpaper;
@@ -90,22 +90,22 @@ class _WallpaperSheetState extends ConsumerState<_WallpaperSheet> {
     final size = View.of(context).physicalSize;
     final lock = _lock;
     final layouts = ref.read(layoutsProvider.notifier);
-    setWallpaperBusy(true);
+    final next = layout.copyWith(wallpaper: w, dim: dim, blur: blur);
+    final needsBlur =
+        w.photo != null && blur > 0.01 && !blurReady(w.photo!, blur);
     Navigator.of(context).pop();
-    // Let the sheet slide away and the overlay fade in before the work.
-    await Future<void>.delayed(const Duration(milliseconds: 260));
-    try {
-      if (w.photo != null && blur > 0.01) await bakeBlur(w.photo!, blur);
-      final next = layout.copyWith(wallpaper: w, dim: dim, blur: blur);
-      if (lock) {
-        final png = await renderWallpaperPng(next, size);
-        if (png != null) await Launcher.setSystemWallpaperBytes(png, 'lock');
+    if (needsBlur) {
+      setWallpaperBusy(true);
+      try {
+        await bakeBlur(w.photo!, blur);
+      } finally {
+        setWallpaperBusy(false);
       }
-      // Setting the layout starts the home-wallpaper sync, which ends the
-      // busy overlay when it is done.
-      layouts.updateLayout(next);
-    } catch (_) {
-      setWallpaperBusy(false);
+    }
+    layouts.updateLayout(next);
+    if (lock) {
+      final png = await renderWallpaperPng(next, size);
+      if (png != null) await Launcher.setSystemWallpaperBytes(png, 'lock');
     }
   }
 
