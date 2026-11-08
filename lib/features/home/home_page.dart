@@ -96,18 +96,14 @@ class HomePage extends ConsumerWidget {
       ),
     );
     if (preview) return content;
-    return _SpreadDetector(
-      onSpread: editing ? null : onSpread,
+    return _HomeGestures(
+      enabled: !editing,
+      onSpread: onSpread,
+      onSwipeUp: onSwipeUp,
+      onSwipeDown: onSwipeDown,
       child: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onLongPress: editing ? null : onLongPressEmpty,
-        onVerticalDragEnd: editing
-            ? null
-            : (d) {
-                final v = d.primaryVelocity ?? 0;
-                if (v < -250) onSwipeUp?.call();
-                if (v > 250) onSwipeDown?.call();
-              },
         child: content,
       ),
     );
@@ -185,22 +181,41 @@ class _ClockHeader extends ConsumerWidget {
   }
 }
 
-/// Two fingers moving apart. Listens to raw pointers, so it never competes
-/// with the swipes, taps and long-presses on Home.
-class _SpreadDetector extends StatefulWidget {
-  const _SpreadDetector({required this.child, this.onSpread});
+/// Home's swipes and the two-finger spread, read from raw pointers as one
+/// gesture so they can't be confused:
+///
+/// - Once a second finger touches down, the gesture is a spread (or
+///   nothing) and can never also count as a swipe.
+/// - A swipe is one finger only, mostly vertical, far enough and quick.
+///
+/// Raw pointers never enter the gesture arena, so taps, long-presses and
+/// the horizontal page swipe keep working as before.
+class _HomeGestures extends StatefulWidget {
+  const _HomeGestures({
+    required this.child,
+    required this.enabled,
+    this.onSpread,
+    this.onSwipeUp,
+    this.onSwipeDown,
+  });
 
   final Widget child;
+  final bool enabled;
   final VoidCallback? onSpread;
+  final VoidCallback? onSwipeUp;
+  final VoidCallback? onSwipeDown;
 
   @override
-  State<_SpreadDetector> createState() => _SpreadDetectorState();
+  State<_HomeGestures> createState() => _HomeGesturesState();
 }
 
-class _SpreadDetectorState extends State<_SpreadDetector> {
+class _HomeGesturesState extends State<_HomeGestures> {
   final _points = <int, Offset>{};
-  double? _start;
-  bool _fired = false;
+  final _starts = <int, Offset>{};
+  Duration? _downAt;
+  double? _spreadStart;
+  bool _multi = false;
+  bool _done = false;
 
   double get _distance {
     final p = _points.values.toList();
@@ -208,40 +223,63 @@ class _SpreadDetectorState extends State<_SpreadDetector> {
   }
 
   void _down(PointerDownEvent e) {
+    if (_points.isEmpty) {
+      _multi = false;
+      _done = false;
+      _downAt = e.timeStamp;
+    }
     _points[e.pointer] = e.position;
-    if (_points.length == 2) {
-      _start = _distance;
-      _fired = false;
+    _starts[e.pointer] = e.position;
+    if (_points.length >= 2) {
+      _multi = true;
+      _spreadStart = _points.length == 2 ? _distance : null;
     }
   }
 
   void _move(PointerMoveEvent e) {
     if (!_points.containsKey(e.pointer)) return;
     _points[e.pointer] = e.position;
-    final start = _start;
-    if (_points.length != 2 || start == null || _fired) return;
+    final start = _spreadStart;
+    if (_done || _points.length != 2 || start == null) return;
     final d = _distance;
     if (d > start * 1.5 && d - start > 120) {
-      _fired = true;
+      _done = true;
       HapticFeedback.mediumImpact();
       widget.onSpread?.call();
     }
   }
 
-  void _up(PointerEvent e) {
+  void _up(PointerUpEvent e) {
+    final start = _starts.remove(e.pointer);
     _points.remove(e.pointer);
-    if (_points.length < 2) _start = null;
+    if (_points.length < 2) _spreadStart = null;
+    if (_points.isNotEmpty || _done || _multi || start == null) return;
+    final delta = e.position - start;
+    final ms = (e.timeStamp - (_downAt ?? e.timeStamp)).inMilliseconds;
+    final vertical = delta.dy.abs() > delta.dx.abs() * 1.8;
+    if (!vertical || delta.dy.abs() < 70 || ms > 700) return;
+    _done = true;
+    if (delta.dy < 0) {
+      widget.onSwipeUp?.call();
+    } else {
+      widget.onSwipeDown?.call();
+    }
+  }
+
+  void _cancel(PointerCancelEvent e) {
+    _points.remove(e.pointer);
+    _starts.remove(e.pointer);
+    if (_points.length < 2) _spreadStart = null;
   }
 
   @override
   Widget build(BuildContext context) {
-    if (widget.onSpread == null) return widget.child;
     return Listener(
       behavior: HitTestBehavior.translucent,
-      onPointerDown: _down,
-      onPointerMove: _move,
-      onPointerUp: _up,
-      onPointerCancel: _up,
+      onPointerDown: widget.enabled ? _down : null,
+      onPointerMove: widget.enabled ? _move : null,
+      onPointerUp: widget.enabled ? _up : null,
+      onPointerCancel: widget.enabled ? _cancel : null,
       child: widget.child,
     );
   }
