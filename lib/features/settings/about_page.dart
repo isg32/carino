@@ -6,10 +6,11 @@ import '../../core/widgets/v_ink.dart';
 import '../../core/widgets/v_list.dart';
 import '../../core/widgets/v_page.dart';
 import '../../core/widgets/v_surface.dart';
+import '../../platform/crash_log.dart';
 import '../../platform/launcher.dart';
 
 /// The version shown in About (keep in step with pubspec.yaml).
-const String carinoVersion = '1.6.0';
+const String carinoVersion = '1.7.0';
 
 const _source = 'https://github.com/isg32/carino';
 
@@ -80,6 +81,16 @@ class AboutPage extends StatelessWidget {
             VListRow(
               title: 'Report a problem',
               onTap: () => Launcher.openUrl('$_source/issues'),
+            ),
+          ],
+        ),
+        VListSection(
+          header: const VEyebrow('Help'),
+          children: [
+            VListRow(
+              title: 'See a test crash report',
+              subtitle: 'What Cariño shows if something goes wrong',
+              onTap: CrashLog.instance.test,
             ),
           ],
         ),

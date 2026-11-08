@@ -6,6 +6,7 @@ import '../data/providers.dart';
 import '../features/home/home_scene.dart';
 import '../features/onboarding/loading_page.dart';
 import '../features/onboarding/welcome_page.dart';
+import '../features/crash_overlay.dart';
 import 'launch_blur.dart';
 import 'shell.dart';
 
@@ -23,7 +24,7 @@ class CarinoApp extends ConsumerWidget {
       theme: VTheme.of(palette),
       builder: (context, child) => LayoutTheme(
         layout: layout,
-        child: LaunchBlur(child: child!),
+        child: CrashOverlay(child: LaunchBlur(child: child!)),
       ),
       home: const _Root(),
     );

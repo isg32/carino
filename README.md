@@ -6,7 +6,7 @@
 
 **A quiet Android home screen. Black and white, with your wallpaper as the only colour.**
 
-![Version](https://img.shields.io/badge/version-1.6.0-000000?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.7.0-000000?style=flat-square)
 ![Release](https://img.shields.io/github/v/release/isg32/carino?style=flat-square&color=000000&label=release)
 ![Flutter](https://img.shields.io/badge/Flutter-3.47-000000?style=flat-square&logo=flutter&logoColor=white)
 ![Platform](https://img.shields.io/badge/platform-Android-000000?style=flat-square&logo=android&logoColor=white)
@@ -59,6 +59,7 @@ Cariño's design language is Veronica's, carried over from [Idris](https://githu
 | **Wallpaper** | Changes the moment you choose it and cross-fades in. Android's own wallpaper follows the layout as a soft blurred copy, so Recents and app transitions match. |
 | **Opening apps** | Apps slide in from the right while Cariño blurs behind them, and un-blur when you come back. |
 | **First run** | Set Cariño as your home app, then a single page of optional permissions, each turning on one thing. |
+| **Crash reports** | An unexpected error shows a calm popup with the log, *Copy log* and *Save to Downloads*. A crash on the Android side is shown on the next launch. As in Idris. |
 | **Settings** | Gestures, clock and glance line, Apps and Search options, web search engine, hidden apps and passcode, backup, reset, About. |
 
 ---
@@ -160,13 +161,15 @@ carino/
 │   │   ├── settings/             Settings pages and About
 │   │   ├── onboarding/           Welcome, permissions and the boot loading screen
 │   │   └── common/               Wallpaper, app icons, popups, the loader
-│   └── platform/launcher.dart    The Dart side of the native layer
+│   └── platform/                 The Dart side of the native layer, and the crash log
 ├── android/app/src/main/kotlin/com/isg32/carino/
 │   ├── MainActivity.kt           The home activity
 │   ├── LauncherChannel.kt        Everything Cariño asks of Android
 │   ├── CarinoNotifications.kt    Notification dots
 │   ├── CarinoLock.kt             Double-tap to lock
-│   └── CarinoWidgets.kt          Widgets from other apps
+│   ├── CarinoWidgets.kt          Widgets from other apps
+│   ├── CarinoMedia.kt            Now playing
+│   └── CrashFiles.kt             Native crashes, saving logs to Downloads
 ├── assets/                       Fonts (OFL), the app icon sources, the About photo
 ├── docs/screenshots/             README images, rendered from the design
 └── test/                         The colour rule, the version check and the smoke test

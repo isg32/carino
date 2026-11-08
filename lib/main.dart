@@ -4,13 +4,23 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'dart:async';
+
 import 'app/app.dart';
 import 'core/theme/v_colors.dart';
 import 'data/providers.dart';
 import 'features/common/wallpaper.dart';
+import 'features/crash_overlay.dart';
+import 'features/settings/about_page.dart';
+import 'platform/crash_log.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // First, so errors from here on are logged and shown, not lost.
+  CrashLog.instance
+    ..appVersion = carinoVersion
+    ..install();
+  ErrorWidget.builder = quietErrorWidget;
 
   // Edge to edge: the wallpaper runs under the status and navigation bars.
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -50,4 +60,6 @@ Future<void> main() async {
   runApp(
     UncontrolledProviderScope(container: container, child: const CarinoApp()),
   );
+  // A crash on the Android side last time is shown once, now.
+  unawaited(CrashLog.instance.checkLastRun());
 }
