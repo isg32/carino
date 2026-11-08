@@ -84,15 +84,25 @@ jobs:
       - name: Test
         run: flutter test
 
-      # Gradle's own downloader tries once; GitHub's file host sometimes
-      # answers 504 for a while. Fetch the distribution with patient
-      # retries and build from that local copy.
+      # Gradle's own downloader tries one host once, and GitHub's file host
+      # (where Gradle's official link ends up) sometimes answers 504 for
+      # hours. aria2 fetches the same file from the official host and two
+      # mirrors at once, retrying, and checks it against the SHA-256 pinned
+      # in gradle-wrapper.properties (which Gradle checks again), so a mirror
+      # can't hand over anything else.
       - name: Fetch Gradle
         run: |
+          sudo apt-get install -y -qq aria2 > /dev/null
           PROPS=android/gradle/wrapper/gradle-wrapper.properties
           URL=$(sed -n 's/^distributionUrl=//p' "$PROPS" | sed 's#\\:#:#')
-          curl -fL --retry 8 --retry-all-errors --retry-delay 20 \
-            --connect-timeout 30 -o "$RUNNER_TEMP/gradle.zip" "$URL"
+          SUM=$(sed -n 's/^distributionSha256Sum=//p' "$PROPS")
+          FILE=$(basename "$URL")
+          VERSION=$(echo "$FILE" | sed -E 's/gradle-(.*)-bin.zip/\1/')
+          aria2c --max-tries=10 --retry-wait=15 --split=3 \
+            --checksum="sha-256=$SUM" --dir="$RUNNER_TEMP" --out=gradle.zip \
+            "$URL" \
+            "https://mirrors.cloud.tencent.com/gradle/$FILE" \
+            "https://mirrors.aliyun.com/gradle/distributions/v$VERSION/$FILE"
           sed -i "s#^distributionUrl=.*#distributionUrl=file\\://$RUNNER_TEMP/gradle.zip#" "$PROPS"
 
       - name: Build signed APKs
