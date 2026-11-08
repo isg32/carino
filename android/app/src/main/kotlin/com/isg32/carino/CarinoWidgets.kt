@@ -50,6 +50,9 @@ class CarinoWidgets(
     private var pending: MethodChannel.Result? = null
     private var pendingId = -1
 
+    /** The views currently drawn, by widget id. */
+    val views = mutableMapOf<Int, View>()
+
     init {
         channel.setMethodCallHandler(this)
         onResume()
@@ -130,6 +133,10 @@ class CarinoWidgets(
                     host.deleteAppWidgetId(call.argument<Number>("id")!!.toInt())
                     result.success(null)
                 }
+                "scrollable" -> {
+                    val view = views[call.argument<Number>("id")!!.toInt()]
+                    result.success(view != null && scrolls(view))
+                }
                 "info" -> {
                     val info = manager.getAppWidgetInfo(call.argument<Number>("id")!!.toInt())
                     result.success(info?.let { describe(it) })
@@ -165,6 +172,23 @@ class CarinoWidgets(
                 }
             }
         }
+    }
+
+    /** Whether the widget holds a list, grid, stack or scroll view. */
+    private fun scrolls(view: View): Boolean {
+        if (view is android.widget.AbsListView ||
+            view is android.widget.AdapterViewAnimator ||
+            view is android.widget.ScrollView ||
+            view is android.widget.HorizontalScrollView
+        ) {
+            return true
+        }
+        if (view is android.view.ViewGroup) {
+            for (i in 0 until view.childCount) {
+                if (scrolls(view.getChildAt(i))) return true
+            }
+        }
+        return false
     }
 
     /** Runs the widget's setup screen if it has one, then hands back the id. */
@@ -269,9 +293,12 @@ class WidgetViewFactory(
                 }
             }
         }
+        widgets.views[id] = view
         return object : PlatformView {
             override fun getView() = view
-            override fun dispose() {}
+            override fun dispose() {
+                if (widgets.views[id] === view) widgets.views.remove(id)
+            }
         }
     }
 }

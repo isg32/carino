@@ -87,6 +87,10 @@ abstract final class WidgetHost {
     return m == null ? null : WidgetProvider.fromMap(m);
   }
 
+  /// Whether the drawn widget holds a list or scroll view of its own.
+  static Future<bool> scrollable(int id) async =>
+      await _methods.invokeMethod<bool>('scrollable', {'id': id}) ?? false;
+
   static Future<void> configure(int id) =>
       _methods.invokeMethod('configure', {'id': id});
 

@@ -115,7 +115,12 @@ class _Framed extends ConsumerWidget {
       final rows = ref.watch(
         settingsProvider.select((s) => s.widgetRows[widgetKey] ?? 2),
       );
-      return HostedWidget(id: hostedId, rows: rows, onLongPress: menu);
+      return HostedWidget(
+        key: ValueKey(widgetKey),
+        id: hostedId,
+        rows: rows,
+        onLongPress: menu,
+      );
     }
     final builtin = WidgetKey.builtin(widgetKey);
     if (builtin == null) return const SizedBox.shrink();
@@ -145,9 +150,10 @@ class _Framed extends ConsumerWidget {
 }
 
 /// A widget from another app: the app's name, then the widget itself (a
-/// native view) in a dashed frame. Taps go to the widget; a long-press opens
-/// Cariño's menu for it.
-class HostedWidget extends ConsumerWidget {
+/// native view) in a dashed frame. Taps reach the widget, and so do vertical
+/// swipes when it has a list of its own to scroll; otherwise swipes scroll
+/// the Widgets tab. A long-press opens Cariño's menu for it.
+class HostedWidget extends ConsumerStatefulWidget {
   const HostedWidget({
     super.key,
     required this.id,
@@ -160,9 +166,28 @@ class HostedWidget extends ConsumerWidget {
   final VoidCallback onLongPress;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final info = ref.watch(hostedInfoProvider(id)).value;
-    final height = rows * WidgetHost.rowHeight;
+  ConsumerState<HostedWidget> createState() => _HostedWidgetState();
+}
+
+class _HostedWidgetState extends ConsumerState<HostedWidget> {
+  bool _scrolls = false;
+
+  /// Asks once the widget has drawn its content (a moment after creation).
+  Future<void> _check() async {
+    for (final wait in const [600, 1500]) {
+      await Future<void>.delayed(Duration(milliseconds: wait));
+      if (!mounted) return;
+      if (await WidgetHost.scrollable(widget.id)) {
+        if (mounted) setState(() => _scrolls = true);
+        return;
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final info = ref.watch(hostedInfoProvider(widget.id)).value;
+    final height = widget.rows * WidgetHost.rowHeight;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -176,7 +201,7 @@ class HostedWidget extends ConsumerWidget {
           ),
         ),
         GestureDetector(
-          onLongPress: onLongPress,
+          onLongPress: widget.onLongPress,
           child: VOutlined(
             radius: 24,
             outline: VOutline.dashed,
@@ -188,19 +213,21 @@ class HostedWidget extends ConsumerWidget {
                   builder: (context, box) => SizedBox(
                     height: height,
                     child: AndroidView(
-                      key: ValueKey('aw-$id-$rows'),
+                      key: ValueKey('aw-${widget.id}-${widget.rows}'),
                       viewType: 'carino/appwidget',
                       creationParams: {
-                        'id': id,
+                        'id': widget.id,
                         'width': box.maxWidth,
                         'height': height,
                       },
                       creationParamsCodec: const StandardMessageCodec(),
-                      // Taps reach the widget; a long-press stays Cariño's.
+                      onPlatformViewCreated: (_) => _check(),
                       gestureRecognizers: {
-                        const Factory<TapGestureRecognizer>(
-                          TapGestureRecognizer.new,
-                        ),
+                        const Factory<TapGestureRecognizer>(TapGestureRecognizer.new),
+                        if (_scrolls)
+                          const Factory<VerticalDragGestureRecognizer>(
+                            VerticalDragGestureRecognizer.new,
+                          ),
                       },
                     ),
                   ),
