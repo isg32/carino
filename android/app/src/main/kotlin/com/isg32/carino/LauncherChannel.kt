@@ -481,6 +481,13 @@ class LauncherChannel(
     ).toBundle()
 
     private fun isDefaultHome(): Boolean {
+        // The role holder is the authoritative answer on Android 10+.
+        if (Build.VERSION.SDK_INT >= 29) {
+            val roles = activity.getSystemService(RoleManager::class.java)
+            if (roles.isRoleAvailable(RoleManager.ROLE_HOME)) {
+                return roles.isRoleHeld(RoleManager.ROLE_HOME)
+            }
+        }
         val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
         val res = activity.packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
         return res?.activityInfo?.packageName == activity.packageName

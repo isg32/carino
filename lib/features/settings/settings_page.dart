@@ -33,7 +33,8 @@ class SettingsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(settingsProvider);
-    final isDefault = ref.watch(defaultHomeProvider).value ?? true;
+    // Unknown until Android answers: show no card rather than a wrong one.
+    final isDefault = ref.watch(defaultHomeProvider).value;
     final widgets = s.widgets.length;
     String action(GestureAction a) => _actionNames[a]!;
 
@@ -42,7 +43,7 @@ class SettingsPage extends ConsumerWidget {
       title: 'Settings',
       eyebrow: 'Cariño $carinoVersion',
       children: [
-        _DefaultHomeCard(isDefault: isDefault),
+        if (isDefault != null) _DefaultHomeCard(isDefault: isDefault),
         VListSection(
           children: [
             VListRow(
