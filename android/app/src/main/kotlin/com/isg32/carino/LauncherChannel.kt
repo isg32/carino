@@ -6,6 +6,7 @@ import android.app.WallpaperManager
 import android.app.role.RoleManager
 import android.content.BroadcastReceiver
 import android.content.ComponentName
+import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -33,6 +34,8 @@ import android.os.Process
 import android.os.UserHandle
 import android.os.UserManager
 import android.provider.AlarmClock
+import android.provider.CalendarContract
+import android.provider.ContactsContract
 import android.provider.MediaStore
 import android.provider.Settings
 import io.flutter.plugin.common.BinaryMessenger
@@ -68,6 +71,7 @@ class LauncherChannel(
     private val camera = activity.getSystemService(CameraManager::class.java)
 
     private var pendingPick: MethodChannel.Result? = null
+    private var pendingPermission: MethodChannel.Result? = null
     private var torchOn = false
 
     // Battery updates arrive often; listen only while Cariño is on screen.
@@ -121,6 +125,13 @@ class LauncherChannel(
             activity.unregisterReceiver(batteryReceiver)
         } catch (_: Exception) {
         }
+    }
+
+    fun onPermissionResult(requestCode: Int, grantResults: IntArray) {
+        if (requestCode != REQUEST_PERMISSION) return
+        val result = pendingPermission ?: return
+        pendingPermission = null
+        result.success(grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED })
     }
 
     fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -305,6 +316,54 @@ class LauncherChannel(
                 }
                 "torchState" -> result.success(torchOn)
                 "dots" -> result.success(CarinoNotifications.counts)
+                "hasPermission" -> result.success(granted(permissionFor(call.argument<String>("name")!!)))
+                "requestPermission" -> {
+                    val permission = permissionFor(call.argument<String>("name")!!)
+                    if (granted(permission)) {
+                        result.success(true)
+                    } else {
+                        pendingPermission?.success(false)
+                        pendingPermission = result
+                        activity.requestPermissions(arrayOf(permission), REQUEST_PERMISSION)
+                    }
+                }
+                "nextEvent" -> worker.execute {
+                    val event = try {
+                        nextEvent()
+                    } catch (_: Exception) {
+                        null
+                    }
+                    main.post { result.success(event) }
+                }
+                "searchContacts" -> {
+                    val query = call.argument<String>("query")!!
+                    worker.execute {
+                        val found = try {
+                            searchContacts(query)
+                        } catch (_: Exception) {
+                            emptyList()
+                        }
+                        main.post { result.success(found) }
+                    }
+                }
+                "openContact" -> {
+                    val uri = ContactsContract.Contacts.getLookupUri(
+                        call.argument<Number>("id")!!.toLong(),
+                        call.argument<String>("lookup")!!,
+                    )
+                    activity.startActivity(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    result.success(null)
+                }
+                "openSetting" -> {
+                    try {
+                        activity.startActivity(
+                            Intent(call.argument<String>("action")!!).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                        )
+                        result.success(true)
+                    } catch (_: Exception) {
+                        result.success(false)
+                    }
+                }
                 "lockScreen" -> result.success(CarinoLock.lock())
                 "hasLockAccess" -> result.success(CarinoLock.isOn(activity))
                 "requestLockAccess" -> {
@@ -504,6 +563,73 @@ class LauncherChannel(
 
     // endregion
 
+    // region Calendar and contacts
+
+    private fun permissionFor(name: String) = when (name) {
+        "calendar" -> android.Manifest.permission.READ_CALENDAR
+        "contacts" -> android.Manifest.permission.READ_CONTACTS
+        else -> throw IllegalArgumentException(name)
+    }
+
+    private fun granted(permission: String) =
+        activity.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
+
+    /** The next timed event that hasn't ended, today or tomorrow. */
+    private fun nextEvent(): Map<String, Any?>? {
+        if (!granted(android.Manifest.permission.READ_CALENDAR)) return null
+        val now = System.currentTimeMillis()
+        val until = now + 36L * 60 * 60 * 1000
+        val uri = CalendarContract.Instances.CONTENT_URI.buildUpon().also {
+            ContentUris.appendId(it, now)
+            ContentUris.appendId(it, until)
+        }.build()
+        activity.contentResolver.query(
+            uri,
+            arrayOf(
+                CalendarContract.Instances.TITLE,
+                CalendarContract.Instances.BEGIN,
+                CalendarContract.Instances.END,
+                CalendarContract.Instances.ALL_DAY,
+            ),
+            "${CalendarContract.Instances.END} > ? AND ${CalendarContract.Instances.ALL_DAY} = 0 " +
+                "AND ${CalendarContract.Instances.VISIBLE} = 1",
+            arrayOf(now.toString()),
+            "${CalendarContract.Instances.BEGIN} ASC",
+        )?.use { c ->
+            if (!c.moveToFirst()) return null
+            return mapOf(
+                "title" to (c.getString(0) ?: ""),
+                "begin" to c.getLong(1),
+                "end" to c.getLong(2),
+            )
+        }
+        return null
+    }
+
+    private fun searchContacts(query: String): List<Map<String, Any?>> {
+        if (query.isBlank() || !granted(android.Manifest.permission.READ_CONTACTS)) return emptyList()
+        val uri = Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_FILTER_URI, Uri.encode(query))
+        val out = mutableListOf<Map<String, Any?>>()
+        activity.contentResolver.query(
+            uri,
+            arrayOf(
+                ContactsContract.Contacts._ID,
+                ContactsContract.Contacts.LOOKUP_KEY,
+                ContactsContract.Contacts.DISPLAY_NAME_PRIMARY,
+            ),
+            null,
+            null,
+            null,
+        )?.use { c ->
+            while (c.moveToNext() && out.size < 4) {
+                out.add(mapOf("id" to c.getLong(0), "lookup" to c.getString(1), "name" to (c.getString(2) ?: "")))
+            }
+        }
+        return out
+    }
+
+    // endregion
+
     // region System
 
     /**
@@ -637,5 +763,6 @@ class LauncherChannel(
     companion object {
         private const val REQUEST_PICK_IMAGE = 4101
         private const val REQUEST_HOME_ROLE = 4102
+        private const val REQUEST_PERMISSION = 4103
     }
 }

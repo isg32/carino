@@ -259,6 +259,9 @@ class CarinoSettings {
     this.note = '',
     this.photos = const [],
     this.dots = true,
+    this.showNextEvent = false,
+    this.searchContacts = false,
+    this.searchSettings = true,
     this.vaultHash,
     this.vaultSalt,
   });
@@ -307,6 +310,9 @@ class CarinoSettings {
       vaultHash: j['vaultHash'] as String?,
       vaultSalt: j['vaultSalt'] as String?,
       dots: (j['dots'] as bool?) ?? true,
+      showNextEvent: (j['showNextEvent'] as bool?) ?? false,
+      searchContacts: (j['searchContacts'] as bool?) ?? false,
+      searchSettings: (j['searchSettings'] as bool?) ?? true,
       photos: [
         for (final p in (j['photos'] as List<Object?>?) ?? const [])
           p! as String,
@@ -340,6 +346,15 @@ class CarinoSettings {
   /// Notification dots on app icons.
   final bool dots;
 
+  /// The next calendar event on Home (needs calendar access).
+  final bool showNextEvent;
+
+  /// People in Search (needs contacts access).
+  final bool searchContacts;
+
+  /// System settings pages in Search.
+  final bool searchSettings;
+
   /// Photos picked as wallpapers, kept for the Wallpaper sheet.
   final List<String> photos;
 
@@ -372,6 +387,9 @@ class CarinoSettings {
     String? note,
     List<String>? photos,
     bool? dots,
+    bool? showNextEvent,
+    bool? searchContacts,
+    bool? searchSettings,
     ({String hash, String salt})? passcode,
     bool clearPasscode = false,
   }) => CarinoSettings(
@@ -397,6 +415,9 @@ class CarinoSettings {
     note: note ?? this.note,
     photos: photos ?? this.photos,
     dots: dots ?? this.dots,
+    showNextEvent: showNextEvent ?? this.showNextEvent,
+    searchContacts: searchContacts ?? this.searchContacts,
+    searchSettings: searchSettings ?? this.searchSettings,
     vaultHash: clearPasscode ? null : (passcode?.hash ?? vaultHash),
     vaultSalt: clearPasscode ? null : (passcode?.salt ?? vaultSalt),
   );
@@ -424,6 +445,9 @@ class CarinoSettings {
     'note': note,
     'photos': photos,
     'dots': dots,
+    'showNextEvent': showNextEvent,
+    'searchContacts': searchContacts,
+    'searchSettings': searchSettings,
     'vaultHash': vaultHash,
     'vaultSalt': vaultSalt,
   };
@@ -435,4 +459,24 @@ class Battery {
 
   final int level;
   final bool charging;
+}
+
+/// The next timed calendar event, for Home's glance line.
+class CalendarEvent {
+  const CalendarEvent(this.title, this.begin, this.end);
+
+  final String title;
+  final DateTime begin;
+  final DateTime end;
+
+  bool get ongoing => DateTime.now().isAfter(begin);
+}
+
+/// A person found by Search.
+class ContactHit {
+  const ContactHit(this.id, this.lookup, this.name);
+
+  final int id;
+  final String lookup;
+  final String name;
 }

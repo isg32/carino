@@ -10,6 +10,11 @@
     <uses-permission android:name="android.permission.FLASHLIGHT" />
     <!-- Uninstall from the app menu. -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+    <!-- Optional, asked for when you turn the feature on: -->
+    <!-- the next event on Home -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <!-- people in Search -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
 
     <application
         android:label="Cariño"
@@ -89,6 +94,10 @@
         </intent>
         <intent>
             <action android:name="android.intent.action.WEB_SEARCH"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:mimeType="vnd.android.cursor.item/contact"/>
         </intent>
         <intent>
             <action android:name="android.intent.action.VIEW"/>

@@ -144,6 +144,49 @@ abstract final class Launcher {
   static Future<void> requestLockAccess() =>
       _methods.invokeMethod('requestLockAccess');
 
+  /// calendar or contacts.
+  static Future<bool> hasPermission(String name) async =>
+      await _methods.invokeMethod<bool>('hasPermission', {'name': name}) ??
+      false;
+
+  /// Asks Android for calendar or contacts access; true if granted.
+  static Future<bool> requestPermission(String name) async =>
+      await _methods.invokeMethod<bool>('requestPermission', {'name': name}) ??
+      false;
+
+  static Future<CalendarEvent?> nextEvent() async {
+    final m = await _methods.invokeMapMethod<String, Object?>('nextEvent');
+    if (m == null) return null;
+    return CalendarEvent(
+      m['title']! as String,
+      DateTime.fromMillisecondsSinceEpoch(m['begin']! as int),
+      DateTime.fromMillisecondsSinceEpoch(m['end']! as int),
+    );
+  }
+
+  static Future<List<ContactHit>> searchContacts(String query) async {
+    final raw = await _methods.invokeListMethod<Map<Object?, Object?>>(
+      'searchContacts',
+      {'query': query},
+    );
+    return [
+      for (final m in raw ?? const <Map<Object?, Object?>>[])
+        ContactHit(
+          m['id']! as int,
+          m['lookup']! as String,
+          m['name']! as String,
+        ),
+    ];
+  }
+
+  static Future<void> openContact(ContactHit c) =>
+      _methods.invokeMethod('openContact', {'id': c.id, 'lookup': c.lookup});
+
+  /// Opens a system settings screen by its intent action.
+  static Future<bool> openSetting(String action) async =>
+      await _methods.invokeMethod<bool>('openSetting', {'action': action}) ??
+      false;
+
   static Future<void> torch(bool on) =>
       _methods.invokeMethod('torch', {'on': on});
 

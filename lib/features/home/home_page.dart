@@ -144,9 +144,16 @@ class _ClockHeader extends ConsumerWidget {
         : (ref.watch(nowProvider).value ?? DateTime.now());
     final battery = ref.watch(batteryProvider).value;
     final time = DateFormat(settings.clock24 ? 'HH:mm' : 'h:mm').format(now);
+    final event = preview ? null : ref.watch(nextEventProvider).value;
+    final hm = DateFormat(settings.clock24 ? 'HH:mm' : 'h:mm a');
     final glance = <String>[
       if (settings.showBattery && battery != null)
         '${battery.level}%${battery.charging ? ' · charging' : ''}',
+      if (event != null)
+        event.ongoing
+            ? 'Now: ${event.title}'
+            : '${event.begin.day == now.day ? '' : 'Tomorrow '}'
+                  '${hm.format(event.begin)} ${event.title}',
     ];
     final ink = VInk.of(context);
     return Padding(
@@ -180,12 +187,17 @@ class _ClockHeader extends ConsumerWidget {
           ),
           if (glance.isNotEmpty) ...[
             const SizedBox(height: 10),
-            Text(
-              glance.join(' · '),
-              style: VText.inter(
-                13,
-                weight: 300,
-              ).copyWith(color: ink.withValues(alpha: 0.8)),
+            GestureDetector(
+              onTap: event == null ? null : () => Launcher.open('calendar'),
+              child: Text(
+                glance.join(' · '),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: VText.inter(
+                  13,
+                  weight: 300,
+                ).copyWith(color: ink.withValues(alpha: 0.8)),
+              ),
             ),
           ],
         ],

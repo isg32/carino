@@ -359,6 +359,19 @@ class HomeGesturesPage extends ConsumerWidget {
                 onChanged: (v) => n.update((s) => s.copyWith(showBattery: v)),
               ),
             ),
+            VListRow(
+              title: 'Next event',
+              subtitle: 'From your calendar',
+              trailing: VSwitch(
+                value: s.showNextEvent,
+                onChanged: (v) async {
+                  if (v && !await Launcher.requestPermission('calendar')) {
+                    return;
+                  }
+                  n.update((s) => s.copyWith(showNextEvent: v));
+                },
+              ),
+            ),
           ],
         ),
       ],
@@ -428,6 +441,28 @@ class AppsSearchPage extends ConsumerWidget {
               trailing: VSwitch(
                 value: s.enterLaunches,
                 onChanged: (v) => n.update((s) => s.copyWith(enterLaunches: v)),
+              ),
+            ),
+            VListRow(
+              title: 'Contacts',
+              subtitle: 'People in Search results',
+              trailing: VSwitch(
+                value: s.searchContacts,
+                onChanged: (v) async {
+                  if (v && !await Launcher.requestPermission('contacts')) {
+                    return;
+                  }
+                  n.update((s) => s.copyWith(searchContacts: v));
+                },
+              ),
+            ),
+            VListRow(
+              title: 'System settings',
+              subtitle: '“wifi”, “battery”, “brightness”…',
+              trailing: VSwitch(
+                value: s.searchSettings,
+                onChanged: (v) =>
+                    n.update((s) => s.copyWith(searchSettings: v)),
               ),
             ),
             VListRow(

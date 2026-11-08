@@ -14,6 +14,7 @@ import '../common/app_icon.dart';
 import '../common/popup.dart';
 import '../home/home_grid.dart';
 import 'essentials.dart';
+import 'system_settings.dart';
 
 const _engines = {
   'DuckDuckGo': 'https://duckduckgo.com/?q=',
@@ -36,10 +37,27 @@ class _SearchSheetState extends ConsumerState<SearchSheet> {
   final _query = TextEditingController();
   late SearchMode _mode = ref.read(settingsProvider).searchOpensOn;
 
+  List<ContactHit> _contacts = const [];
+  int _contactQuery = 0;
+
   @override
   void dispose() {
     _query.dispose();
     super.dispose();
+  }
+
+  /// People are looked up as you type; a slower answer for an older query
+  /// is dropped.
+  Future<void> _changed(String text) async {
+    setState(() {});
+    final q = text.trim();
+    final id = ++_contactQuery;
+    if (!ref.read(settingsProvider).searchContacts || q.length < 2) {
+      if (_contacts.isNotEmpty) setState(() => _contacts = const []);
+      return;
+    }
+    final found = await Launcher.searchContacts(q);
+    if (mounted && id == _contactQuery) setState(() => _contacts = found);
   }
 
   List<AppEntry> _matches(String q) {
@@ -90,6 +108,37 @@ class _SearchSheetState extends ConsumerState<SearchSheet> {
     final ink = VInk.of(context);
     final q = _query.text.trim();
     final matches = _matches(q);
+    void close() => Navigator.of(context).maybePop();
+    final elsewhere = <Widget>[
+      for (final c in _contacts)
+        VListRow(
+          title: c.name,
+          leading: const VIconView(VIcon.person, size: 18),
+          value: 'Contacts',
+          onTap: () {
+            Launcher.openContact(c);
+            close();
+          },
+        ),
+      if (settings.searchSettings)
+        for (final s in matchSettings(q))
+          VListRow(
+            title: s.label,
+            leading: VIconView(s.icon, size: 18),
+            value: 'Settings',
+            onTap: () {
+              Launcher.openSetting(s.action);
+              close();
+            },
+          ),
+      if (settings.searchWeb)
+        VListRow(
+          title: 'Search “$q”',
+          leading: const VIconView(VIcon.globe, size: 18),
+          value: settings.webEngine,
+          onTap: () => _web(q),
+        ),
+    ];
 
     return CarinoSheet(
       maxHeightFactor: 0.9,
@@ -119,7 +168,7 @@ class _SearchSheetState extends ConsumerState<SearchSheet> {
                         weight: 300,
                       ).copyWith(color: ink.withValues(alpha: 0.7)),
                       style: VText.inter(15).copyWith(color: ink),
-                      onChanged: (_) => setState(() {}),
+                      onChanged: _changed,
                       onSubmitted: _submit,
                     ),
                   ),
@@ -165,22 +214,13 @@ class _SearchSheetState extends ConsumerState<SearchSheet> {
               ),
               const SizedBox(height: 18),
             ],
-            if (settings.searchWeb) ...[
+            if (elsewhere.isNotEmpty) ...[
               const VEyebrow('Elsewhere'),
               const SizedBox(height: 10),
-              VListSection(
-                children: [
-                  VListRow(
-                    title: 'Search “$q”',
-                    leading: const VIconView(VIcon.globe, size: 18),
-                    value: settings.webEngine,
-                    onTap: () => _web(q),
-                  ),
-                ],
-              ),
+              VListSection(children: elsewhere),
             ],
-            if (matches.isEmpty && !settings.searchWeb)
-              const VFootnote('No apps match.', center: true),
+            if (matches.isEmpty && elsewhere.isEmpty)
+              const VFootnote('Nothing matches.', center: true),
           ],
         ],
       ),

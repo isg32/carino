@@ -426,6 +426,17 @@ final lockAccessProvider = StreamProvider<bool>((ref) async* {
       .map((e) => (e['lockAccess'] as bool?) ?? false);
 });
 
+/// The next calendar event, refreshed each minute while Cariño is in front.
+final nextEventProvider = FutureProvider<CalendarEvent?>((ref) async {
+  if (!ref.watch(settingsProvider.select((s) => s.showNextEvent))) return null;
+  ref.watch(nowProvider);
+  try {
+    return await Launcher.nextEvent();
+  } catch (_) {
+    return null;
+  }
+});
+
 /// Whether [app] shows a dot: dots on, and it has notifications.
 final dotProvider = Provider.family<bool, String>((ref, package) {
   if (!ref.watch(settingsProvider.select((s) => s.dots))) return false;

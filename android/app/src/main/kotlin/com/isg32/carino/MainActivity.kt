@@ -36,6 +36,15 @@ class MainActivity : FlutterActivity() {
         launcher?.onActivityResult(requestCode, resultCode, data)
     }
 
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        launcher?.onPermissionResult(requestCode, grantResults)
+    }
+
     override fun onDestroy() {
         launcher?.dispose()
         launcher = null
