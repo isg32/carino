@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,6 +20,7 @@ class AppGlyph extends ConsumerWidget {
     this.size = 56,
     this.style = IconStyle.mono,
     this.lifted = false,
+    this.blur = false,
   });
 
   final AppEntry app;
@@ -26,6 +29,10 @@ class AppGlyph extends ConsumerWidget {
 
   /// Inverted (white fill, black glyph), for an icon being dragged.
   final bool lifted;
+
+  /// Frosted glass behind the glyph. Only for Home and the dock, where a
+  /// dozen icons sit still; never in long scrolling lists.
+  final bool blur;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -70,7 +77,7 @@ class AppGlyph extends ConsumerWidget {
 
     // A tint, not a live blur: dozens of icons each blurring the screen
     // behind them every frame is what made scrolling heavy.
-    return Container(
+    final circle = Container(
       width: size,
       height: size,
       alignment: Alignment.center,
@@ -80,6 +87,13 @@ class AppGlyph extends ConsumerWidget {
         border: Border.all(color: ink),
       ),
       child: glyph,
+    );
+    if (!blur || lifted) return circle;
+    return ClipOval(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+        child: circle,
+      ),
     );
   }
 }
@@ -96,6 +110,7 @@ class AppTile extends StatelessWidget {
     this.onLongPress,
     this.onOpened,
     this.dot = false,
+    this.blur = false,
   });
 
   final AppEntry app;
@@ -107,6 +122,9 @@ class AppTile extends StatelessWidget {
 
   /// Called after the app is asked to open (Search closes itself).
   final VoidCallback? onOpened;
+
+  /// See [AppGlyph.blur].
+  final bool blur;
 
   static Rect rectOf(BuildContext context) {
     final box = context.findRenderObject()! as RenderBox;
@@ -142,7 +160,7 @@ class AppTile extends StatelessWidget {
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            AppGlyph(app: app, size: size, style: style),
+            AppGlyph(app: app, size: size, style: style, blur: blur),
             if (dot)
               Positioned(
                 top: 1,

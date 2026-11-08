@@ -97,6 +97,7 @@ class HomeLayout {
     this.ink = InkMode.white,
     this.glass = 0.5,
     this.icons = IconStyle.mono,
+    this.iconBlur = false,
     this.columns = 4,
     this.favRows = 2,
     this.favourites = const [],
@@ -115,6 +116,7 @@ class HomeLayout {
     ink: InkMode.values.byName((j['ink'] as String?) ?? 'white'),
     glass: ((j['glass'] as num?) ?? 0.5).toDouble(),
     icons: IconStyle.values.byName((j['icons'] as String?) ?? 'mono'),
+    iconBlur: (j['iconBlur'] as bool?) ?? false,
     columns: (j['columns'] as int?) ?? 4,
     favRows: (j['favRows'] as int?) ?? 2,
     favourites: [
@@ -138,6 +140,9 @@ class HomeLayout {
   final InkMode ink;
   final double glass;
   final IconStyle icons;
+
+  /// Frosted glass behind Home's and the dock's icons (costs a little more).
+  final bool iconBlur;
 
   /// Dock size, and the favourites grid's column count (they match).
   final int columns;
@@ -169,6 +174,7 @@ class HomeLayout {
     InkMode? ink,
     double? glass,
     IconStyle? icons,
+    bool? iconBlur,
     int? columns,
     int? favRows,
     List<String?>? favourites,
@@ -182,6 +188,7 @@ class HomeLayout {
     ink: ink ?? this.ink,
     glass: glass ?? this.glass,
     icons: icons ?? this.icons,
+    iconBlur: iconBlur ?? this.iconBlur,
     columns: columns ?? this.columns,
     favRows: favRows ?? this.favRows,
     favourites: favourites ?? this.favourites,
@@ -197,6 +204,7 @@ class HomeLayout {
     'ink': ink.name,
     'glass': glass,
     'icons': icons.name,
+    'iconBlur': iconBlur,
     'columns': columns,
     'favRows': favRows,
     'favourites': favourites,

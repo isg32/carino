@@ -98,6 +98,7 @@ class _Slot extends ConsumerWidget {
       return AppTile(
         app: app,
         style: layout.icons,
+        blur: layout.iconBlur,
         label: label,
         onLongPress: onMenu == null ? null : (c, r) => onMenu!(c, app, r),
       );

@@ -399,6 +399,14 @@ class _LayoutSettings extends ConsumerWidget {
               ),
             ),
             VListRow(
+              title: 'Blur behind icons',
+              subtitle: 'Frosted glass on Home and the dock',
+              trailing: VSwitch(
+                value: layout.iconBlur,
+                onChanged: (v) => set((l) => l.copyWith(iconBlur: v)),
+              ),
+            ),
+            VListRow(
               title: 'Columns',
               subtitle: 'Dock and favourites',
               trailing: VStepper(
