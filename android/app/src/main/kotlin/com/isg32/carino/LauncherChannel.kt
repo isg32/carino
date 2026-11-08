@@ -75,6 +75,7 @@ class LauncherChannel(
     private var batteryRegistered = false
 
     fun dispose() {
+        CarinoNotifications.onChange = null
         methods.setMethodCallHandler(null)
         events.setStreamHandler(null)
         launcherApps.unregisterCallback(packageCallback)
@@ -91,7 +92,13 @@ class LauncherChannel(
     fun onResume() {
         resumed = true
         startBattery()
-        emit(mapOf("type" to "resume", "defaultHome" to isDefaultHome()))
+        emit(
+            mapOf(
+                "type" to "resume",
+                "defaultHome" to isDefaultHome(),
+                "notificationAccess" to CarinoNotifications.hasAccess(activity),
+            ),
+        )
     }
 
     fun onPause() {
@@ -296,6 +303,22 @@ class LauncherChannel(
                     result.success(id != null)
                 }
                 "torchState" -> result.success(torchOn)
+                "dots" -> result.success(CarinoNotifications.counts)
+                "hasNotificationAccess" -> result.success(CarinoNotifications.hasAccess(activity))
+                "requestNotificationAccess" -> {
+                    val component = ComponentName(activity, CarinoNotifications::class.java)
+                    val intent = if (Build.VERSION.SDK_INT >= 30) {
+                        Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS)
+                            .putExtra(
+                                Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME,
+                                component.flattenToString(),
+                            )
+                    } else {
+                        Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                    }
+                    activity.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    result.success(null)
+                }
                 "battery" -> {
                     val intent = activity.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
                     if (intent == null) {
@@ -589,6 +612,9 @@ class LauncherChannel(
     // Registered last: the callbacks above must exist first.
     init {
         fitWallpaperToScreen()
+        CarinoNotifications.onChange = { counts ->
+            emit(mapOf("type" to "dots", "counts" to counts))
+        }
         methods.setMethodCallHandler(this)
         events.setStreamHandler(this)
         launcherApps.registerCallback(packageCallback, main)

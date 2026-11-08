@@ -121,6 +121,18 @@ abstract final class Launcher {
     return Battery(m['level']! as int, (m['charging'] as bool?) ?? false);
   }
 
+  /// Notification counts by package (only apps that allow dots).
+  static Future<Map<String, int>> dots() async {
+    final m = await _methods.invokeMapMethod<String, int>('dots');
+    return m ?? const {};
+  }
+
+  static Future<bool> hasNotificationAccess() async =>
+      await _methods.invokeMethod<bool>('hasNotificationAccess') ?? false;
+
+  static Future<void> requestNotificationAccess() =>
+      _methods.invokeMethod('requestNotificationAccess');
+
   static Future<void> torch(bool on) =>
       _methods.invokeMethod('torch', {'on': on});
 

@@ -400,6 +400,32 @@ final defaultHomeProvider = StreamProvider<bool>((ref) async* {
       .map((e) => (e['defaultHome'] as bool?) ?? false);
 });
 
+/// Notification counts by package, for dots. Empty without access.
+final dotsProvider = StreamProvider<Map<String, int>>((ref) async* {
+  yield await Launcher.dots();
+  yield* Launcher.events
+      .where((e) => e['type'] == 'dots')
+      .map(
+        (e) => (e['counts']! as Map<Object?, Object?>).map(
+          (k, v) => MapEntry(k! as String, v! as int),
+        ),
+      );
+});
+
+final notificationAccessProvider = StreamProvider<bool>((ref) async* {
+  yield await Launcher.hasNotificationAccess();
+  yield* Launcher.events
+      .where((e) => e['type'] == 'resume')
+      .map((e) => (e['notificationAccess'] as bool?) ?? false);
+});
+
+/// Whether [app] shows a dot: dots on, and it has notifications.
+final dotProvider = Provider.family<bool, String>((ref, package) {
+  if (!ref.watch(settingsProvider.select((s) => s.dots))) return false;
+  final counts = ref.watch(dotsProvider).value ?? const {};
+  return (counts[package] ?? 0) > 0;
+});
+
 /// The current minute, for clocks. Ticks once a minute, on the minute, and
 /// not at all while Cariño is in the background.
 final nowProvider = StreamProvider<DateTime>((ref) {

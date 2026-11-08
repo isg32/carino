@@ -36,6 +36,32 @@ class AppGlyph extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final icon = _icon(context, ref);
+    if (lifted || !ref.watch(dotProvider(app.package))) return icon;
+    // A notification dot: ink, ringed in the surface colour, top right.
+    final d = (size * 0.2).clamp(8.0, 13.0);
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        icon,
+        Positioned(
+          top: size * 0.02,
+          right: size * 0.02,
+          child: Container(
+            width: d,
+            height: d,
+            decoration: BoxDecoration(
+              color: VInk.of(context),
+              shape: BoxShape.circle,
+              border: Border.all(color: VInk.surfaceOf(context), width: 2),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _icon(BuildContext context, WidgetRef ref) {
     final ink = VInk.of(context);
     final paper = VInk.surfaceOf(context);
     final palette = VPalette.of(context);
@@ -109,7 +135,6 @@ class AppTile extends StatelessWidget {
     this.label = true,
     this.onLongPress,
     this.onOpened,
-    this.dot = false,
     this.blur = false,
   });
 
@@ -117,7 +142,6 @@ class AppTile extends StatelessWidget {
   final double size;
   final IconStyle style;
   final bool label;
-  final bool dot;
   final void Function(BuildContext context, Rect iconRect)? onLongPress;
 
   /// Called after the app is asked to open (Search closes itself).
@@ -157,29 +181,7 @@ class AppTile extends StatelessWidget {
                 HapticFeedback.mediumImpact();
                 onLongPress!(iconContext, rectOf(iconContext));
               },
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            AppGlyph(app: app, size: size, style: style, blur: blur),
-            if (dot)
-              Positioned(
-                top: 1,
-                right: 1,
-                child: Container(
-                  width: 11,
-                  height: 11,
-                  decoration: BoxDecoration(
-                    color: VInk.of(context),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: VInk.surfaceOf(context),
-                      width: 2,
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
+        child: AppGlyph(app: app, size: size, style: style, blur: blur),
       ),
     );
     if (!label) return Semantics(label: app.label, button: true, child: icon);

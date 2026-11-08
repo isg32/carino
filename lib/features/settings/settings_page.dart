@@ -35,6 +35,7 @@ class SettingsPage extends ConsumerWidget {
     // Unknown until Android answers: show no card rather than a wrong one.
     final isDefault = ref.watch(defaultHomeProvider).value;
     final widgets = s.widgets.length;
+    final access = ref.watch(notificationAccessProvider).value ?? false;
     String action(GestureAction a) => _actionNames[a]!;
 
     return _Page(
@@ -64,6 +65,22 @@ class SettingsPage extends ConsumerWidget {
               title: 'Widgets',
               subtitle: '$widgets ${widgets == 1 ? 'widget' : 'widgets'}',
               onTap: () => showAddWidget(context),
+            ),
+            VListRow(
+              leading: const _RowIcon(VIcon.bell),
+              title: 'Notification dots',
+              subtitle: access
+                  ? 'On app icons, for apps that allow them'
+                  : 'Needs notification access · tap to allow',
+              onTap: access ? null : Launcher.requestNotificationAccess,
+              trailing: access
+                  ? VSwitch(
+                      value: s.dots,
+                      onChanged: (v) => ref
+                          .read(settingsProvider.notifier)
+                          .update((s) => s.copyWith(dots: v)),
+                    )
+                  : null,
             ),
             VListRow(
               leading: const _RowIcon(VIcon.hide),

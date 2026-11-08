@@ -114,6 +114,7 @@ class _AppMenu extends ConsumerWidget {
     final menu = _MenuCard(
       app: app,
       actions: actions,
+      notifications: ref.watch(dotsProvider).value?[app.package] ?? 0,
       onInfo: () {
         close();
         Launcher.appInfo(app.key);
@@ -157,11 +158,13 @@ class _MenuCard extends StatelessWidget {
   const _MenuCard({
     required this.app,
     required this.actions,
+    this.notifications = 0,
     required this.onInfo,
   });
 
   final AppEntry app;
   final List<_Action> actions;
+  final int notifications;
   final VoidCallback onInfo;
 
   @override
@@ -197,6 +200,10 @@ class _MenuCard extends StatelessWidget {
                           style: VText.inter(15, weight: 600),
                         ),
                       ),
+                      if (notifications > 0) ...[
+                        VPill('$notifications new', fill: VFill.filled),
+                        const SizedBox(width: 4),
+                      ],
                       Semantics(
                         button: true,
                         label: 'App info',

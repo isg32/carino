@@ -257,6 +257,7 @@ class CarinoSettings {
     ],
     this.note = '',
     this.photos = const [],
+    this.dots = true,
     this.vaultHash,
     this.vaultSalt,
   });
@@ -303,6 +304,7 @@ class CarinoSettings {
       note: (j['note'] as String?) ?? '',
       vaultHash: j['vaultHash'] as String?,
       vaultSalt: j['vaultSalt'] as String?,
+      dots: (j['dots'] as bool?) ?? true,
       photos: [
         for (final p in (j['photos'] as List<Object?>?) ?? const [])
           p! as String,
@@ -331,6 +333,9 @@ class CarinoSettings {
 
   /// The Notes widget's text.
   final String note;
+
+  /// Notification dots on app icons.
+  final bool dots;
 
   /// Photos picked as wallpapers, kept for the Wallpaper sheet.
   final List<String> photos;
@@ -362,6 +367,7 @@ class CarinoSettings {
     List<BuiltinWidget>? widgets,
     String? note,
     List<String>? photos,
+    bool? dots,
     ({String hash, String salt})? passcode,
     bool clearPasscode = false,
   }) => CarinoSettings(
@@ -385,6 +391,7 @@ class CarinoSettings {
     widgets: widgets ?? this.widgets,
     note: note ?? this.note,
     photos: photos ?? this.photos,
+    dots: dots ?? this.dots,
     vaultHash: clearPasscode ? null : (passcode?.hash ?? vaultHash),
     vaultSalt: clearPasscode ? null : (passcode?.salt ?? vaultSalt),
   );
@@ -410,6 +417,7 @@ class CarinoSettings {
     'widgets': [for (final w in widgets) w.name],
     'note': note,
     'photos': photos,
+    'dots': dots,
     'vaultHash': vaultHash,
     'vaultSalt': vaultSalt,
   };
