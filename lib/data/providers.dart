@@ -419,6 +419,13 @@ final notificationAccessProvider = StreamProvider<bool>((ref) async* {
       .map((e) => (e['notificationAccess'] as bool?) ?? false);
 });
 
+final lockAccessProvider = StreamProvider<bool>((ref) async* {
+  yield await Launcher.hasLockAccess();
+  yield* Launcher.events
+      .where((e) => e['type'] == 'resume')
+      .map((e) => (e['lockAccess'] as bool?) ?? false);
+});
+
 /// Whether [app] shows a dot: dots on, and it has notifications.
 final dotProvider = Provider.family<bool, String>((ref, package) {
   if (!ref.watch(settingsProvider.select((s) => s.dots))) return false;

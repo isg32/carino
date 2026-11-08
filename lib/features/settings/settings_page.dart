@@ -244,6 +244,7 @@ const _actionNames = {
   GestureAction.notifications: 'Notifications',
   GestureAction.customise: 'Customise',
   GestureAction.apps: 'Apps',
+  GestureAction.lock: 'Lock screen',
   GestureAction.nothing: 'Nothing',
 };
 
@@ -318,6 +319,15 @@ class HomeGesturesPage extends ConsumerWidget {
                 'Swipe down',
                 s.swipeDown,
                 (a) => s.copyWith(swipeDown: a),
+              ),
+            ),
+            VListRow(
+              title: 'Double-tap',
+              value: _actionNames[s.doubleTap],
+              onTap: () => gesture(
+                'Double-tap',
+                s.doubleTap,
+                (a) => s.copyWith(doubleTap: a),
               ),
             ),
             const VListRow(title: 'Long-press', value: 'Customise'),

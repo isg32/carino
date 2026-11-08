@@ -186,9 +186,26 @@ class ShellState extends ConsumerState<Shell> with TickerProviderStateMixin {
         openCustomise();
       case GestureAction.apps:
         goTo(1);
+      case GestureAction.lock:
+        _lock();
       case GestureAction.nothing:
         break;
     }
+  }
+
+  /// Locks the screen, or explains how to let Cariño do that.
+  Future<void> _lock() async {
+    if (await Launcher.lockScreen() || !mounted) return;
+    final allow = await confirmDialog(
+      context,
+      title: 'Double-tap to lock',
+      body:
+          'Turn on “Cariño: double-tap to lock” in Accessibility. It only locks '
+          'the screen and cannot read what is on it. On Android 13 and later, '
+          'first allow restricted settings for Cariño in its App info.',
+      action: 'Open Accessibility',
+    );
+    if (allow) await Launcher.requestLockAccess();
   }
 
   void setEditing(bool value) {
@@ -348,6 +365,7 @@ class ShellState extends ConsumerState<Shell> with TickerProviderStateMixin {
                 onLongPressEmpty: openCustomise,
                 onSwipeUp: () => _gesture(settings.swipeUp),
                 onSwipeDown: () => _gesture(settings.swipeDown),
+                onDoubleTap: () => _gesture(settings.doubleTap),
                 onMenu: _menu,
                 onPickEmpty: _pickForSlot,
                 onSpread: () => openHiddenApps(context, ref),

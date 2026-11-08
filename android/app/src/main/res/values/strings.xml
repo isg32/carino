@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lock_service_label">Cariño: double-tap to lock</string>
+    <string name="lock_service_description">Lets Cariño lock the screen when you double-tap an empty part of Home. It does nothing else, and it cannot read what is on your screen.</string>
+</resources>

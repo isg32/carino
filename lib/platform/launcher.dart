@@ -133,6 +133,17 @@ abstract final class Launcher {
   static Future<void> requestNotificationAccess() =>
       _methods.invokeMethod('requestNotificationAccess');
 
+  /// Locks the screen through the accessibility service; false if it
+  /// isn't turned on.
+  static Future<bool> lockScreen() async =>
+      await _methods.invokeMethod<bool>('lockScreen') ?? false;
+
+  static Future<bool> hasLockAccess() async =>
+      await _methods.invokeMethod<bool>('hasLockAccess') ?? false;
+
+  static Future<void> requestLockAccess() =>
+      _methods.invokeMethod('requestLockAccess');
+
   static Future<void> torch(bool on) =>
       _methods.invokeMethod('torch', {'on': on});
 

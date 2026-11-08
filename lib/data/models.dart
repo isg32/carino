@@ -216,7 +216,7 @@ enum AppsView { list, grid }
 
 enum SearchMode { apps, essentials }
 
-enum GestureAction { search, notifications, customise, apps, nothing }
+enum GestureAction { search, notifications, customise, apps, lock, nothing }
 
 /// The built-in widgets on the Widgets tab.
 enum BuiltinWidget { clock, battery, calendar, notes }
@@ -238,6 +238,7 @@ class CarinoSettings {
     this.showDate = true,
     this.swipeUp = GestureAction.search,
     this.swipeDown = GestureAction.notifications,
+    this.doubleTap = GestureAction.lock,
     this.hidden = const {},
     this.hiddenFindByName = false,
     this.essentials = const [
@@ -286,6 +287,7 @@ class CarinoSettings {
       showDate: (j['showDate'] as bool?) ?? d.showDate,
       swipeUp: e(GestureAction.values, j['swipeUp'], d.swipeUp),
       swipeDown: e(GestureAction.values, j['swipeDown'], d.swipeDown),
+      doubleTap: e(GestureAction.values, j['doubleTap'], d.doubleTap),
       hidden: {
         for (final k in (j['hidden'] as List<Object?>?) ?? const [])
           k! as String,
@@ -326,6 +328,7 @@ class CarinoSettings {
   final bool showDate;
   final GestureAction swipeUp;
   final GestureAction swipeDown;
+  final GestureAction doubleTap;
   final Set<String> hidden;
   final bool hiddenFindByName;
   final List<String> essentials;
@@ -361,6 +364,7 @@ class CarinoSettings {
     bool? showDate,
     GestureAction? swipeUp,
     GestureAction? swipeDown,
+    GestureAction? doubleTap,
     Set<String>? hidden,
     bool? hiddenFindByName,
     List<String>? essentials,
@@ -385,6 +389,7 @@ class CarinoSettings {
     showDate: showDate ?? this.showDate,
     swipeUp: swipeUp ?? this.swipeUp,
     swipeDown: swipeDown ?? this.swipeDown,
+    doubleTap: doubleTap ?? this.doubleTap,
     hidden: hidden ?? this.hidden,
     hiddenFindByName: hiddenFindByName ?? this.hiddenFindByName,
     essentials: essentials ?? this.essentials,
@@ -411,6 +416,7 @@ class CarinoSettings {
     'showDate': showDate,
     'swipeUp': swipeUp.name,
     'swipeDown': swipeDown.name,
+    'doubleTap': doubleTap.name,
     'hidden': hidden.toList(),
     'hiddenFindByName': hiddenFindByName,
     'essentials': essentials,

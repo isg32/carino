@@ -26,6 +26,7 @@ class HomePage extends ConsumerWidget {
     this.onMenu,
     this.onPickEmpty,
     this.onSpread,
+    this.onDoubleTap,
     this.preview = false,
   });
 
@@ -42,6 +43,9 @@ class HomePage extends ConsumerWidget {
 
   /// Two fingers spread apart on Home (the hidden apps).
   final VoidCallback? onSpread;
+
+  /// Double-tap on Home's empty space.
+  final VoidCallback? onDoubleTap;
 
   /// Drawn in a Customise card: no gestures, frozen clock.
   final bool preview;
@@ -101,10 +105,19 @@ class HomePage extends ConsumerWidget {
       onSpread: onSpread,
       onSwipeUp: onSwipeUp,
       onSwipeDown: onSwipeDown,
-      child: GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onLongPress: editing ? null : onLongPressEmpty,
-        child: content,
+      // Long-press and double-tap live on a layer behind the content, so
+      // they only see Home's empty space: icons and the clock take their
+      // own taps first, and are never slowed by the double-tap wait.
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onLongPress: editing ? null : onLongPressEmpty,
+            onDoubleTap: editing ? null : onDoubleTap,
+          ),
+          content,
+        ],
       ),
     );
   }

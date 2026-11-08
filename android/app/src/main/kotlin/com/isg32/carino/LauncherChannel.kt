@@ -97,6 +97,7 @@ class LauncherChannel(
                 "type" to "resume",
                 "defaultHome" to isDefaultHome(),
                 "notificationAccess" to CarinoNotifications.hasAccess(activity),
+                "lockAccess" to CarinoLock.isOn(activity),
             ),
         )
     }
@@ -304,6 +305,15 @@ class LauncherChannel(
                 }
                 "torchState" -> result.success(torchOn)
                 "dots" -> result.success(CarinoNotifications.counts)
+                "lockScreen" -> result.success(CarinoLock.lock())
+                "hasLockAccess" -> result.success(CarinoLock.isOn(activity))
+                "requestLockAccess" -> {
+                    activity.startActivity(
+                        Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                    )
+                    result.success(null)
+                }
                 "hasNotificationAccess" -> result.success(CarinoNotifications.hasAccess(activity))
                 "requestNotificationAccess" -> {
                     val component = ComponentName(activity, CarinoNotifications::class.java)

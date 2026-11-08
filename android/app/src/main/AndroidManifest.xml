@@ -44,6 +44,19 @@
                 <category android:name="android.intent.category.DEFAULT"/>
             </intent-filter>
         </activity>
+        <!-- Double-tap to lock: only performs the lock action. -->
+        <service
+            android:name=".CarinoLock"
+            android:exported="false"
+            android:label="@string/lock_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/carino_accessibility" />
+        </service>
         <!-- Notification dots: only reads which apps have notifications. -->
         <service
             android:name=".CarinoNotifications"
