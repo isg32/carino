@@ -6,7 +6,7 @@
 
 **A quiet Android home screen. Black and white, with your wallpaper as the only colour.**
 
-![Version](https://img.shields.io/badge/version-1.5.0-000000?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.5.1-000000?style=flat-square)
 ![Release](https://img.shields.io/github/v/release/isg32/carino?style=flat-square&color=000000&label=release)
 ![Flutter](https://img.shields.io/badge/Flutter-3.47-000000?style=flat-square&logo=flutter&logoColor=white)
 ![Platform](https://img.shields.io/badge/platform-Android-000000?style=flat-square&logo=android&logoColor=white)
@@ -135,6 +135,7 @@ flowchart TB
 Checked by tests on every run:
 
 - **Two colours.** A colour may only be created in `lib/core/theme/v_colors.dart` (the built-in wallpapers live there too), and importing Material fails the build.
+- **Every screen opens.** A smoke test opens every page, sheet and tab (Customise included) on a phone-sized view with white ink and with black ink, against a mocked Android, and fails on any exception or layout overflow.
 - **The shown version matches `pubspec.yaml`.**
 
 ---
@@ -168,7 +169,7 @@ carino/
 │   └── CarinoWidgets.kt          Widgets from other apps
 ├── assets/                       Fonts (OFL), the app icon sources, the About photo
 ├── docs/screenshots/             README images, rendered from the design
-└── test/                         The colour rule and the version check
+└── test/                         The colour rule, the version check and the smoke test
 ```
 
 ---
