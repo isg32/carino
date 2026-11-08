@@ -16,6 +16,7 @@ import '../../data/providers.dart';
 import '../common/popup.dart';
 import '../common/wallpaper.dart';
 import '../home/home_scene.dart';
+import '../settings/about_page.dart';
 import 'layout_menu.dart';
 import 'wallpaper_sheet.dart';
 
@@ -414,6 +415,20 @@ class _LayoutSettings extends ConsumerWidget {
                 min: 1,
                 max: 3,
                 onChanged: (v) => set((l) => l.copyWith(favRows: v)),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        VListSection(
+          children: [
+            VListRow(
+              title: 'About Cariño',
+              value: 'Version $carinoVersion',
+              onTap: () => Navigator.of(context).push(
+                CupertinoPageRoute<void>(
+                  builder: (_) => const AboutPage(backLabel: 'Customise'),
+                ),
               ),
             ),
           ],

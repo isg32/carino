@@ -28,6 +28,7 @@ flutter:
     - assets/fonts/OFL-Inter.txt
     # The mark shown in About, bundled so nothing is fetched.
     - assets/icon/mark.png
+    - assets/images/developer.jpg
 
   shaders:
     - shaders/progressive_blur.frag

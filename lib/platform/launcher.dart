@@ -135,6 +135,9 @@ abstract final class Launcher {
   static Future<void> open(String name) =>
       _methods.invokeMethod('openIntent', {'name': name});
 
+  /// Opens a web page in the browser.
+  static Future<void> openUrl(String url) => webSearch('', url: url);
+
   static Future<void> webSearch(String query, {String? url}) =>
       _methods.invokeMethod('webSearch', {'query': query, 'url': url});
 }

@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -20,8 +19,7 @@ import '../common/app_icon.dart';
 import '../common/popup.dart';
 import '../search/search_sheet.dart';
 import '../widgets/widgets_page.dart';
-
-const carinoVersion = '1.0.0';
+import 'about_page.dart';
 
 void _push(BuildContext context, Widget page) =>
     Navigator.of(context).push(CupertinoPageRoute<void>(builder: (_) => page));
@@ -75,10 +73,16 @@ class SettingsPage extends ConsumerWidget {
               onTap: () => _push(context, const HiddenAppsPage()),
             ),
             VListRow(
+              leading: const _RowIcon(VIcon.copy),
+              title: 'Backup & reset',
+              subtitle: 'Export or import layouts and settings',
+              onTap: () => _push(context, const BackupPage()),
+            ),
+            VListRow(
               leading: const _RowIcon(VIcon.info),
-              title: 'Backup & about',
-              subtitle: 'Export layouts · version, licences',
-              onTap: () => _push(context, const BackupAboutPage()),
+              title: 'About Cariño',
+              subtitle: 'Version $carinoVersion · licences, developer',
+              onTap: () => _push(context, const AboutPage()),
             ),
           ],
         ),
@@ -471,9 +475,9 @@ class HiddenAppsPage extends ConsumerWidget {
   }
 }
 
-/// Settings › Backup & about.
-class BackupAboutPage extends ConsumerWidget {
-  const BackupAboutPage({super.key});
+/// Settings › Backup & reset.
+class BackupPage extends ConsumerWidget {
+  const BackupPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -525,7 +529,7 @@ class BackupAboutPage extends ConsumerWidget {
 
     return _Page(
       backLabel: 'Settings',
-      title: 'Backup & about',
+      title: 'Backup & reset',
       children: [
         const VEyebrow('Backup'),
         VListSection(
@@ -542,34 +546,13 @@ class BackupAboutPage extends ConsumerWidget {
             ),
           ],
         ),
-        const VEyebrow('About'),
+        const VEyebrow('System'),
         VListSection(
           children: [
-            VListRow(
-              leading: Container(
-                width: 44,
-                height: 44,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: VInk.of(context),
-                  shape: BoxShape.circle,
-                ),
-                child: Text(
-                  'C',
-                  style: VText.doto(
-                    24,
-                    weight: 900,
-                  ).copyWith(color: VInk.surfaceOf(context)),
-                ),
-              ),
-              title: 'Cariño',
-              subtitle: 'Version $carinoVersion · GPL-3.0',
-            ),
             VListRow(
               title: 'Default home app',
               onTap: () => Launcher.open('homeSettings'),
             ),
-            VListRow(title: 'Licences', onTap: () => showLicensePage(context)),
           ],
         ),
         VButton.ghost('Reset Cariño', onPressed: reset),
@@ -590,46 +573,4 @@ void _toast(BuildContext context, String text) {
       child: VCard(child: Text(text, style: VText.inter(14, weight: 500))),
     );
   });
-}
-
-/// Licences for the bundled fonts and packages.
-void showLicensePage(BuildContext context) {
-  _push(context, const _Licences());
-}
-
-class _Licences extends StatelessWidget {
-  const _Licences();
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<List<LicenseEntry>>(
-      future: LicenseRegistry.licenses.toList(),
-      builder: (context, snap) {
-        final entries = snap.data ?? const [];
-        return VDetailPage(
-          backLabel: 'Backup & about',
-          title: 'Licences',
-          children: [
-            const VFootnote(
-              'Doto and Inter: SIL Open Font License. Cariño: GPL-3.0.',
-            ),
-            for (final e in entries.take(60))
-              VCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(e.packages.join(', '), style: VText.rowTitle),
-                    const SizedBox(height: 6),
-                    Text(
-                      e.paragraphs.map((p) => p.text).take(3).join('\n\n'),
-                      style: VText.footnote,
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        );
-      },
-    );
-  }
 }
