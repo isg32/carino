@@ -121,20 +121,6 @@ String wallpaperSignature(HomeLayout l, ui.Size size) => jsonEncode({
   's': [size.width.round(), size.height.round()],
 });
 
-/// Set while a blurred photo is being made, the one wallpaper step whose
-/// result you see. The shell shows [BusyOverlay] over Home meanwhile.
-final wallpaperBusy = ValueNotifier<bool>(false);
-
-Timer? _busyGuard;
-
-/// Starts or ends [wallpaperBusy]. A guard ends it after 15 s in any case,
-/// so the overlay can never be left up.
-void setWallpaperBusy(bool on) {
-  _busyGuard?.cancel();
-  wallpaperBusy.value = on;
-  if (on) {
-    _busyGuard = Timer(const Duration(seconds: 10), () {
-      wallpaperBusy.value = false;
-    });
-  }
-}
+/// Sets Android's wallpaper now, skipping the usual wait. The shell
+/// fills this in; the wallpaper sheet calls it the moment you choose.
+VoidCallback? syncSystemWallpaperNow;

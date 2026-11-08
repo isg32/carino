@@ -12,7 +12,6 @@ import '../core/widgets/v_glass.dart';
 import '../data/models.dart';
 import '../data/providers.dart';
 import '../features/apps/apps_page.dart';
-import '../features/common/dot_loader.dart';
 import '../features/common/popup.dart';
 import '../features/common/wallpaper.dart';
 import '../features/common/wallpaper_sync.dart';
@@ -68,10 +67,15 @@ class ShellState extends ConsumerState<Shell> with TickerProviderStateMixin {
       (_, _) => _scheduleWallpaperSync(),
       fireImmediately: true,
     );
+    syncSystemWallpaperNow = () {
+      _wallpaperTimer?.cancel();
+      _syncWallpaper();
+    };
   }
 
   Timer? _wallpaperTimer;
   bool _syncing = false;
+  bool _syncAgain = false;
 
   void _scheduleWallpaperSync() {
     _wallpaperTimer?.cancel();
@@ -85,7 +89,12 @@ class ShellState extends ConsumerState<Shell> with TickerProviderStateMixin {
   /// waits on this. Only when what shows has changed (it is slow, and it
   /// recolours Material You).
   Future<void> _syncWallpaper() async {
-    if (!mounted || _syncing) return;
+    if (!mounted) return;
+    if (_syncing) {
+      // A newer choice arrived mid-way: run again once this one is done.
+      _syncAgain = true;
+      return;
+    }
     final layout = ref.read(activeLayoutProvider);
     // A blurred copy needs no detail: a quarter of the screen is plenty,
     // and Android scales it up for far less work than a full-size image.
@@ -103,6 +112,10 @@ class ShellState extends ConsumerState<Shell> with TickerProviderStateMixin {
       // Leave the system wallpaper as it is; the next change tries again.
     } finally {
       _syncing = false;
+      if (_syncAgain) {
+        _syncAgain = false;
+        unawaited(_syncWallpaper());
+      }
     }
   }
 
@@ -110,6 +123,7 @@ class ShellState extends ConsumerState<Shell> with TickerProviderStateMixin {
   void dispose() {
     _events?.cancel();
     _wallpaperTimer?.cancel();
+    syncSystemWallpaperNow = null;
     _pages.dispose();
     _zoom.dispose();
     super.dispose();
@@ -271,12 +285,6 @@ class ShellState extends ConsumerState<Shell> with TickerProviderStateMixin {
                       ),
                     ),
                   ),
-                ),
-              ),
-              Positioned.fill(
-                child: BusyOverlay(
-                  busy: wallpaperBusy,
-                  label: 'Setting wallpaper',
                 ),
               ),
             ],

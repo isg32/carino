@@ -79,9 +79,9 @@ class _WallpaperSheetState extends ConsumerState<_WallpaperSheet> {
     await deletePhoto(path);
   }
 
-  /// Applies at once. Only a photo blur that hasn't been made yet shows
-  /// the busy overlay (the sheet closes first); Android's own copy is set
-  /// in the background afterwards.
+  /// Applies the moment you tap. A photo blur that hasn't been made yet
+  /// shows live until its file is ready; Android's copy is set right away
+  /// (and again once the blur is made).
   Future<void> _use() async {
     final layout = _layout;
     final w = _choice ?? layout.wallpaper;
@@ -93,16 +93,15 @@ class _WallpaperSheetState extends ConsumerState<_WallpaperSheet> {
     final next = layout.copyWith(wallpaper: w, dim: dim, blur: blur);
     final needsBlur =
         w.photo != null && blur > 0.01 && !blurReady(w.photo!, blur);
+
+    layouts.updateLayout(next);
     Navigator.of(context).pop();
     if (needsBlur) {
-      setWallpaperBusy(true);
-      try {
-        await bakeBlur(w.photo!, blur);
-      } finally {
-        setWallpaperBusy(false);
-      }
+      await bakeBlur(w.photo!, blur);
+      // Redraw from the finished file instead of the live blur.
+      layouts.updateLayout(next.copyWith());
     }
-    layouts.updateLayout(next);
+    syncSystemWallpaperNow?.call();
     if (lock) {
       final png = await renderWallpaperPng(next, size);
       if (png != null) await Launcher.setSystemWallpaperBytes(png, 'lock');
