@@ -95,8 +95,8 @@ class AboutPage extends StatelessWidget {
           ],
         ),
         const VFootnote(
-          'A home screen, nothing else. Cariño keeps everything on the phone '
-          'and sends nothing anywhere.',
+          "'No One noticed' & 'Sienna' are my favourites, but 'Cariño' suits as the name!"
+          "Listen to The Marias, it'll change or ruin your life.",
         ),
       ],
     );
