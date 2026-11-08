@@ -1,5 +1,3 @@
-import 'dart:ui' as ui;
-
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,8 +15,7 @@ import '../../data/providers.dart';
 import '../../platform/launcher.dart';
 import '../common/popup.dart';
 import '../common/wallpaper.dart';
-
-enum _ApplyTo { carino, lock, both }
+import '../common/wallpaper_sync.dart';
 
 Future<void> showWallpaperSheet(BuildContext context, HomeLayout layout) =>
     showBlurPopup<void>(
@@ -40,7 +37,7 @@ class _WallpaperSheet extends ConsumerStatefulWidget {
 }
 
 class _WallpaperSheetState extends ConsumerState<_WallpaperSheet> {
-  _ApplyTo _apply = _ApplyTo.carino;
+  bool _lock = false;
   WallpaperRef? _choice;
   double? _dim;
   double? _blur;
@@ -83,50 +80,25 @@ class _WallpaperSheetState extends ConsumerState<_WallpaperSheet> {
     await deletePhoto(path);
   }
 
-  /// Renders a built-in wallpaper at screen size for the system to use.
-  Future<Uint8List?> _render(WallpaperRef w, double dim) async {
-    final size = View.of(context).physicalSize;
-    final recorder = ui.PictureRecorder();
-    final canvas = Canvas(recorder);
-    paintWallpaperPalette(
-      canvas,
-      size,
-      VWallpapers.all[w.builtin] ?? VWallpapers.night,
-    );
-    if (dim > 0) {
-      canvas.drawRect(
-        Offset.zero & size,
-        Paint()..color = VColors.black.withValues(alpha: dim),
-      );
-    }
-    final image = await recorder.endRecording().toImage(
-      size.width.round(),
-      size.height.round(),
-    );
-    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-    image.dispose();
-    return bytes?.buffer.asUint8List();
-  }
-
   Future<void> _use() async {
     final layout = _layout;
     final w = _choice ?? layout.wallpaper;
     final dim = _dim ?? layout.dim;
     final blur = w.photo == null ? 0.0 : (_blur ?? layout.blur);
+    final size = View.of(context).physicalSize;
     setState(() => _busy = true);
     if (w.photo != null && blur > 0.01) await bakeBlur(w.photo!, blur);
     ref
         .read(layoutsProvider.notifier)
         .updateLayout(layout.copyWith(wallpaper: w, dim: dim, blur: blur));
-    if (_apply != _ApplyTo.carino) {
-      final which = _apply == _ApplyTo.lock ? 'lock' : 'both';
-      if (w.photo != null) {
-        final file = blur > 0.01 ? bakedPath(w.photo!, blur) : w.photo!;
-        await Launcher.setSystemWallpaper(file, which);
-      } else {
-        final png = await _render(w, dim);
-        if (png != null) await Launcher.setSystemWallpaperBytes(png, which);
-      }
+    // The home wallpaper follows the layout by itself; the lock screen
+    // only when asked.
+    if (_lock) {
+      final png = await renderWallpaperPng(
+        layout.copyWith(wallpaper: w, dim: dim, blur: blur),
+        size,
+      );
+      if (png != null) await Launcher.setSystemWallpaperBytes(png, 'lock');
     }
     if (mounted) Navigator.of(context).pop();
   }
@@ -261,23 +233,17 @@ class _WallpaperSheetState extends ConsumerState<_WallpaperSheet> {
                   ),
                 ),
               VListRow(
-                title: 'Also set',
-                trailing: VSegmented<_ApplyTo>(
-                  compact: true,
-                  segments: const {
-                    _ApplyTo.carino: 'No',
-                    _ApplyTo.lock: 'Lock',
-                    _ApplyTo.both: 'System',
-                  },
-                  value: _apply,
-                  onChanged: (v) => setState(() => _apply = v),
+                title: 'Lock screen too',
+                trailing: VSwitch(
+                  value: _lock,
+                  onChanged: (v) => setState(() => _lock = v),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 8),
           const VFootnote(
-            '“Lock” also sets the lock screen; “System” sets the lock screen and the system wallpaper apps see.',
+            'Android’s home wallpaper (seen in Recents) always follows the layout in use.',
           ),
           const SizedBox(height: 16),
           VButton.primary(

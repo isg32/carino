@@ -473,6 +473,27 @@ class LauncherChannel(
 
     // region System
 
+    /**
+     * Cariño has one page, so the system wallpaper should be exactly the
+     * screen. Launchers with several pages ask for a much wider one, which
+     * Android then stretches and pans in Recents and app transitions.
+     */
+    private fun fitWallpaperToScreen() {
+        try {
+            val (w, h) = if (Build.VERSION.SDK_INT >= 30) {
+                val bounds = activity.windowManager.maximumWindowMetrics.bounds
+                bounds.width() to bounds.height()
+            } else {
+                val m = android.util.DisplayMetrics()
+                @Suppress("DEPRECATION")
+                activity.windowManager.defaultDisplay.getRealMetrics(m)
+                m.widthPixels to m.heightPixels
+            }
+            WallpaperManager.getInstance(activity).suggestDesiredDimensions(w, h)
+        } catch (_: Exception) {
+        }
+    }
+
     /** Apps Cariño opens slide in from the right over it. */
     private fun slideIn() = ActivityOptions.makeCustomAnimation(
         activity,
@@ -567,6 +588,7 @@ class LauncherChannel(
 
     // Registered last: the callbacks above must exist first.
     init {
+        fitWallpaperToScreen()
         methods.setMethodCallHandler(this)
         events.setStreamHandler(this)
         launcherApps.registerCallback(packageCallback, main)

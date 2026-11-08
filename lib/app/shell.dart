@@ -14,6 +14,7 @@ import '../data/providers.dart';
 import '../features/apps/apps_page.dart';
 import '../features/common/popup.dart';
 import '../features/common/wallpaper.dart';
+import '../features/common/wallpaper_sync.dart';
 import '../features/customise/customise_screen.dart';
 import '../features/home/home_grid.dart';
 import '../features/home/home_page.dart';
@@ -59,11 +60,50 @@ class ShellState extends ConsumerState<Shell> with TickerProviderStateMixin {
     ref.read(appsProvider.future).then((apps) {
       if (mounted) ref.read(layoutsProvider.notifier).seed(apps);
     }, onError: (Object _) {});
+    // Keep Android's own wallpaper (seen in Recents and behind app
+    // transitions) the same as the active layout's.
+    ref.listenManual(
+      activeLayoutProvider,
+      (_, _) => _scheduleWallpaperSync(),
+      fireImmediately: true,
+    );
+  }
+
+  Timer? _wallpaperTimer;
+  bool _syncing = false;
+
+  void _scheduleWallpaperSync() {
+    _wallpaperTimer?.cancel();
+    _wallpaperTimer = Timer(const Duration(milliseconds: 900), _syncWallpaper);
+  }
+
+  /// Sets the system home wallpaper to the active layout's, only when what
+  /// shows has changed since the last time (it is slow, and it changes the
+  /// phone's Material You colours).
+  Future<void> _syncWallpaper() async {
+    if (!mounted || _syncing) return;
+    final layout = ref.read(activeLayoutProvider);
+    final size = View.of(context).physicalSize;
+    final prefs = ref.read(prefsProvider);
+    final signature = wallpaperSignature(layout, size);
+    if (prefs.getString('system_wallpaper') == signature) return;
+    _syncing = true;
+    try {
+      final png = await renderWallpaperPng(layout, size);
+      if (png != null && await Launcher.setSystemWallpaperBytes(png, 'home')) {
+        await prefs.setString('system_wallpaper', signature);
+      }
+    } catch (_) {
+      // Leave the system wallpaper as it is; the next change tries again.
+    } finally {
+      _syncing = false;
+    }
   }
 
   @override
   void dispose() {
     _events?.cancel();
+    _wallpaperTimer?.cancel();
     _pages.dispose();
     _zoom.dispose();
     super.dispose();
