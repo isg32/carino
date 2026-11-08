@@ -12,13 +12,21 @@ import '../../core/widgets/v_ink.dart';
 /// Every popup's route: what's behind blurs (with a light scrim) as the
 /// popup comes in, and un-blurs as it leaves. Tapping the blur closes it.
 class BlurPopupRoute<T> extends PageRoute<T> {
-  BlurPopupRoute({required this.builder, this.sheet = false, this.blur = 14});
+  BlurPopupRoute({
+    required this.builder,
+    this.sheet = false,
+    this.blur = 14,
+    this.fromScale = 0.94,
+  });
 
   final WidgetBuilder builder;
 
   /// Slides up from the bottom instead of fading and growing in place.
   final bool sheet;
   final double blur;
+
+  /// Where a centred popup grows from (a folder opens from further in).
+  final double fromScale;
 
   @override
   bool get opaque => false;
@@ -88,7 +96,7 @@ class BlurPopupRoute<T> extends PageRoute<T> {
           FadeTransition(
             opacity: curved,
             child: ScaleTransition(
-              scale: Tween(begin: 0.94, end: 1.0).animate(curved),
+              scale: Tween(begin: fromScale, end: 1.0).animate(curved),
               child: child,
             ),
           ),

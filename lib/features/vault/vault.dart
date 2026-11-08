@@ -1,11 +1,13 @@
 import 'dart:convert';
 import 'dart:math';
+import 'dart:ui';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/theme/v_palette.dart';
 import '../../core/theme/v_text.dart';
 import '../../core/widgets/v_ink.dart';
 import '../../core/widgets/v_list.dart';
@@ -38,10 +40,12 @@ Future<bool> unlockHidden(BuildContext context, WidgetRef ref) async {
 /// Spread on Home: passcode, then the hidden apps.
 Future<void> openHiddenApps(BuildContext context, WidgetRef ref) async {
   if (!await unlockHidden(context, ref) || !context.mounted) return;
-  await showBlurPopup<void>(
-    context,
-    (_) => const _HiddenAppsSheet(),
-    sheet: true,
+  await Navigator.of(context).push(
+    BlurPopupRoute<void>(
+      builder: (_) => const _HiddenFolder(),
+      blur: 20,
+      fromScale: 0.6,
+    ),
   );
 }
 
@@ -272,8 +276,10 @@ class _PasscodeScreenState extends ConsumerState<_PasscodeScreen>
   }
 }
 
-class _HiddenAppsSheet extends ConsumerWidget {
-  const _HiddenAppsSheet();
+/// The hidden apps as a folder in the middle of the screen: a glass card
+/// that grows out of the centre, with the apps in the layout's grid.
+class _HiddenFolder extends ConsumerWidget {
+  const _HiddenFolder();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -284,43 +290,77 @@ class _HiddenAppsSheet extends ConsumerWidget {
     ];
     final layout = ref.watch(activeLayoutProvider);
     final cols = layout.columns;
-    return CarinoSheet(
-      eyebrow: '${apps.length} hidden',
-      title: 'Hidden apps',
-      child: apps.isEmpty
-          ? const Padding(
-              padding: EdgeInsets.symmetric(vertical: 20),
-              child: VFootnote(
-                'Nothing hidden yet. Long-press an app and choose Hide.',
-                center: true,
-              ),
-            )
-          : Column(
-              children: [
-                for (var r = 0; r * cols < apps.length; r++) ...[
-                  if (r > 0) const SizedBox(height: 18),
-                  Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: homeRowPadding(cols) - 16,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        for (var c = 0; c < cols; c++)
-                          r * cols + c < apps.length
-                              ? AppTile(
-                                  app: apps[r * cols + c],
-                                  style: layout.icons,
-                                  onOpened: () =>
-                                      Navigator.of(context).maybePop(),
-                                )
-                              : const SizedBox(width: homeIconSize),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
+    final ink = VInk.of(context);
+    final size = MediaQuery.sizeOf(context);
+
+    final grid = apps.isEmpty
+        ? const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: VFootnote(
+              'Nothing hidden yet. Long-press an app and choose Hide.',
+              center: true,
             ),
+          )
+        : Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var r = 0; r * cols < apps.length; r++) ...[
+                if (r > 0) const SizedBox(height: 18),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    for (var c = 0; c < cols; c++)
+                      r * cols + c < apps.length
+                          ? AppTile(
+                              app: apps[r * cols + c],
+                              style: layout.icons,
+                              onOpened: () => Navigator.of(context).maybePop(),
+                            )
+                          : const SizedBox(width: homeIconSize),
+                  ],
+                ),
+              ],
+            ],
+          );
+
+    return Center(
+      child: GestureDetector(
+        onTap: () {},
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: size.width - 40,
+            maxHeight: size.height * 0.7,
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(32),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: VPalette.of(context).glassSheet,
+                  borderRadius: BorderRadius.circular(32),
+                  border: Border.all(color: ink),
+                ),
+                padding: const EdgeInsets.fromLTRB(24, 22, 24, 26),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text('${apps.length} HIDDEN', style: VText.eyebrow),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Hidden apps',
+                      style: VText.doto(28, weight: 800, height: 1),
+                    ),
+                    const SizedBox(height: 22),
+                    Flexible(child: SingleChildScrollView(child: grid)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
