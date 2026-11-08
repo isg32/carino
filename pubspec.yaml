@@ -1,7 +1,7 @@
 name: carino
 description: "A quiet Android home screen: three tabs, one pill, your wallpaper as the only colour."
 publish_to: 'none'
-version: 1.7.0+12
+version: 1.7.1+13
 
 environment:
   sdk: ^3.13.7
