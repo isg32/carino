@@ -213,7 +213,7 @@ class _CarinoSheetState extends State<CarinoSheet>
             onVerticalDragUpdate: (d) => _move(d.delta.dy),
             onVerticalDragEnd: (d) => _release(d.primaryVelocity ?? 0),
             child: Transform.translate(
-              offset: Offset(0, _drag),
+              offset: Offset(0, _drag + 1.5),
               child: NotificationListener<ScrollNotification>(
                 onNotification: _onScroll,
                 child: ClipRRect(
@@ -223,9 +223,15 @@ class _CarinoSheetState extends State<CarinoSheet>
                   child: BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
                     child: DecoratedBox(
+                      // One outline that follows the rounded corners and
+                      // runs down the sides; its bottom edge sits just off
+                      // the screen, so the sheet reads as a card rising up.
                       decoration: BoxDecoration(
                         color: palette.glassSheet,
-                        border: Border(top: BorderSide(color: ink)),
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(VRadius.sheet),
+                        ),
+                        border: Border.all(color: ink),
                       ),
                       child: Padding(
                         padding: EdgeInsets.fromLTRB(16, 10, 16, 16 + bottom),
