@@ -120,3 +120,22 @@ String wallpaperSignature(HomeLayout l, ui.Size size) => jsonEncode({
   'b': l.blur,
   's': [size.width.round(), size.height.round()],
 });
+
+/// Set while a wallpaper change is being worked on (blurring a photo,
+/// rendering, handing it to Android). The shell shows [BusyOverlay] over
+/// Home meanwhile, so the heavy work never shows as a stutter.
+final wallpaperBusy = ValueNotifier<bool>(false);
+
+Timer? _busyGuard;
+
+/// Starts or ends [wallpaperBusy]. A guard ends it after 15 s in any case,
+/// so the overlay can never be left up.
+void setWallpaperBusy(bool on) {
+  _busyGuard?.cancel();
+  wallpaperBusy.value = on;
+  if (on) {
+    _busyGuard = Timer(const Duration(seconds: 15), () {
+      wallpaperBusy.value = false;
+    });
+  }
+}

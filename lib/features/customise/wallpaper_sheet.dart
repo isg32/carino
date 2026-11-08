@@ -41,7 +41,6 @@ class _WallpaperSheetState extends ConsumerState<_WallpaperSheet> {
   WallpaperRef? _choice;
   double? _dim;
   double? _blur;
-  bool _busy = false;
 
   HomeLayout get _layout => ref
       .read(layoutsProvider)
@@ -80,27 +79,34 @@ class _WallpaperSheetState extends ConsumerState<_WallpaperSheet> {
     await deletePhoto(path);
   }
 
+  /// Closes the sheet at once and does the heavy work under the busy
+  /// overlay: blurring a photo, then (through the layout change) setting
+  /// Android's wallpaper; and the lock screen if asked.
   Future<void> _use() async {
     final layout = _layout;
     final w = _choice ?? layout.wallpaper;
     final dim = _dim ?? layout.dim;
     final blur = w.photo == null ? 0.0 : (_blur ?? layout.blur);
     final size = View.of(context).physicalSize;
-    setState(() => _busy = true);
-    if (w.photo != null && blur > 0.01) await bakeBlur(w.photo!, blur);
-    ref
-        .read(layoutsProvider.notifier)
-        .updateLayout(layout.copyWith(wallpaper: w, dim: dim, blur: blur));
-    // The home wallpaper follows the layout by itself; the lock screen
-    // only when asked.
-    if (_lock) {
-      final png = await renderWallpaperPng(
-        layout.copyWith(wallpaper: w, dim: dim, blur: blur),
-        size,
-      );
-      if (png != null) await Launcher.setSystemWallpaperBytes(png, 'lock');
+    final lock = _lock;
+    final layouts = ref.read(layoutsProvider.notifier);
+    setWallpaperBusy(true);
+    Navigator.of(context).pop();
+    // Let the sheet slide away and the overlay fade in before the work.
+    await Future<void>.delayed(const Duration(milliseconds: 260));
+    try {
+      if (w.photo != null && blur > 0.01) await bakeBlur(w.photo!, blur);
+      final next = layout.copyWith(wallpaper: w, dim: dim, blur: blur);
+      if (lock) {
+        final png = await renderWallpaperPng(next, size);
+        if (png != null) await Launcher.setSystemWallpaperBytes(png, 'lock');
+      }
+      // Setting the layout starts the home-wallpaper sync, which ends the
+      // busy overlay when it is done.
+      layouts.updateLayout(next);
+    } catch (_) {
+      setWallpaperBusy(false);
     }
-    if (mounted) Navigator.of(context).pop();
   }
 
   @override
@@ -246,10 +252,7 @@ class _WallpaperSheetState extends ConsumerState<_WallpaperSheet> {
             'Android’s home wallpaper (seen in Recents) always follows the layout in use.',
           ),
           const SizedBox(height: 16),
-          VButton.primary(
-            _busy ? 'Setting…' : 'Use wallpaper',
-            onPressed: _busy ? null : _use,
-          ),
+          VButton.primary('Use wallpaper', onPressed: _use),
         ],
       ),
     );

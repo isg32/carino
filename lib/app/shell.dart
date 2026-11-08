@@ -12,6 +12,7 @@ import '../core/widgets/v_glass.dart';
 import '../data/models.dart';
 import '../data/providers.dart';
 import '../features/apps/apps_page.dart';
+import '../features/common/dot_loader.dart';
 import '../features/common/popup.dart';
 import '../features/common/wallpaper.dart';
 import '../features/common/wallpaper_sync.dart';
@@ -74,7 +75,12 @@ class ShellState extends ConsumerState<Shell> with TickerProviderStateMixin {
 
   void _scheduleWallpaperSync() {
     _wallpaperTimer?.cancel();
-    _wallpaperTimer = Timer(const Duration(milliseconds: 900), _syncWallpaper);
+    // In Customise you may flick through layouts; set it once on the way out.
+    if (_zoom.value > 0) return;
+    _wallpaperTimer = Timer(
+      Duration(milliseconds: wallpaperBusy.value ? 60 : 900),
+      _syncWallpaper,
+    );
   }
 
   /// Sets the system home wallpaper to the active layout's, only when what
@@ -86,8 +92,12 @@ class ShellState extends ConsumerState<Shell> with TickerProviderStateMixin {
     final size = View.of(context).physicalSize;
     final prefs = ref.read(prefsProvider);
     final signature = wallpaperSignature(layout, size);
-    if (prefs.getString('system_wallpaper') == signature) return;
+    if (prefs.getString('system_wallpaper') == signature) {
+      setWallpaperBusy(false);
+      return;
+    }
     _syncing = true;
+    setWallpaperBusy(true);
     try {
       final png = await renderWallpaperPng(layout, size, soft: true);
       if (png != null && await Launcher.setSystemWallpaperBytes(png, 'home')) {
@@ -97,6 +107,7 @@ class ShellState extends ConsumerState<Shell> with TickerProviderStateMixin {
       // Leave the system wallpaper as it is; the next change tries again.
     } finally {
       _syncing = false;
+      setWallpaperBusy(false);
     }
   }
 
@@ -151,7 +162,7 @@ class ShellState extends ConsumerState<Shell> with TickerProviderStateMixin {
     _zoom.forward();
   }
 
-  void closeCustomise() => _zoom.reverse();
+  void closeCustomise() => _zoom.reverse().whenComplete(_scheduleWallpaperSync);
 
   void openSearch() =>
       showBlurPopup(context, (_) => const SearchSheet(), sheet: true);
@@ -265,6 +276,12 @@ class ShellState extends ConsumerState<Shell> with TickerProviderStateMixin {
                       ),
                     ),
                   ),
+                ),
+              ),
+              Positioned.fill(
+                child: BusyOverlay(
+                  busy: wallpaperBusy,
+                  label: 'Setting wallpaper',
                 ),
               ),
             ],
