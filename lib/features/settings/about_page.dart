@@ -10,7 +10,7 @@ import '../../platform/crash_log.dart';
 import '../../platform/launcher.dart';
 
 /// The version shown in About (keep in step with pubspec.yaml).
-const String carinoVersion = '1.7.2';
+const String carinoVersion = '1.7.3';
 
 const _source = 'https://github.com/isg32/carino';
 

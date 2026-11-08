@@ -2,7 +2,7 @@
 
 Every release is built and signed by CI from `main`; versions follow `pubspec.yaml` (minor for features, patch for fixes).
 
-## [1.7.2] — First stable release
+## [1.7.3] — First stable release
 
 Cariño's first stable release: a quiet Android home screen, black and white, with your wallpaper as the only colour. Three places, Home, Apps and Widgets, under one glass pill.
 
@@ -45,7 +45,7 @@ Cariño's first stable release: a quiet Android home screen, black and white, wi
 ### Fixed since 1.7.0
 - The music note icon's first note had its stem through its head.
 - A spacing mistake in About's footnote.
-- CI caches Gradle and retries when its download times out, and release notes now come from this changelog.
+- CI fetches Gradle with patient retries (GitHub's file host was timing out), caches it, and takes release notes from this changelog. (1.7.2 was never published because of it.)
 
 ## [1.7.1]
 - Fixed the music note icon.

@@ -84,6 +84,17 @@ jobs:
       - name: Test
         run: flutter test
 
+      # Gradle's own downloader tries once; GitHub's file host sometimes
+      # answers 504 for a while. Fetch the distribution with patient
+      # retries and build from that local copy.
+      - name: Fetch Gradle
+        run: |
+          PROPS=android/gradle/wrapper/gradle-wrapper.properties
+          URL=$(sed -n 's/^distributionUrl=//p' "$PROPS" | sed 's#\\:#:#')
+          curl -fL --retry 8 --retry-all-errors --retry-delay 20 \
+            --connect-timeout 30 -o "$RUNNER_TEMP/gradle.zip" "$URL"
+          sed -i "s#^distributionUrl=.*#distributionUrl=file\\://$RUNNER_TEMP/gradle.zip#" "$PROPS"
+
       - name: Build signed APKs
         env:
           CARINO_KEYSTORE_FILE: ${{ runner.temp }}/release-key.jks
