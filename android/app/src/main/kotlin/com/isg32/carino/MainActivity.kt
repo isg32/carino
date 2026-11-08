@@ -6,10 +6,15 @@ import io.flutter.embedding.engine.FlutterEngine
 
 class MainActivity : FlutterActivity() {
     private var launcher: LauncherChannel? = null
+    private var widgets: CarinoWidgets? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         launcher = LauncherChannel(this, flutterEngine.dartExecutor.binaryMessenger)
+        val hosted = CarinoWidgets(this, flutterEngine.dartExecutor.binaryMessenger)
+        widgets = hosted
+        flutterEngine.platformViewsController.registry
+            .registerViewFactory("carino/appwidget", WidgetViewFactory(this, hosted))
     }
 
     /** The Home button while Carino is already in front: back to Home. */
@@ -23,10 +28,12 @@ class MainActivity : FlutterActivity() {
     override fun onResume() {
         super.onResume()
         launcher?.onResume()
+        widgets?.onResume()
     }
 
     override fun onPause() {
         launcher?.onPause()
+        widgets?.onPause()
         super.onPause()
     }
 
@@ -34,6 +41,7 @@ class MainActivity : FlutterActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         launcher?.onActivityResult(requestCode, resultCode, data)
+        widgets?.onActivityResult(requestCode, resultCode)
     }
 
     override fun onRequestPermissionsResult(
@@ -47,6 +55,8 @@ class MainActivity : FlutterActivity() {
 
     override fun onDestroy() {
         launcher?.dispose()
+        widgets?.dispose()
+        widgets = null
         launcher = null
         super.onDestroy()
     }

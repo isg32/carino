@@ -1,4 +1,6 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -7,12 +9,15 @@ import '../../core/icons/v_icons.dart';
 import '../../core/theme/v_palette.dart';
 import '../../core/theme/v_text.dart';
 import '../../core/widgets/v_buttons.dart';
+import '../../core/widgets/v_controls.dart';
 import '../../core/widgets/v_ink.dart';
 import '../../core/widgets/v_list.dart';
 import '../../core/widgets/v_surface.dart';
 import '../../data/models.dart';
 import '../../data/providers.dart';
 import '../../platform/launcher.dart';
+import '../../platform/widget_host.dart';
+import '../common/dot_loader.dart';
 import '../common/popup.dart';
 
 /// The Widgets tab: Cariño's own widgets, in the order you set.
@@ -75,31 +80,44 @@ class WidgetsPage extends ConsumerWidget {
           ),
         for (var i = 0; i < widgets.length; i++) ...[
           if (i > 0) const SizedBox(height: 12),
-          _Framed(widget: widgets[i], index: i),
+          _Framed(widgetKey: widgets[i], index: i),
         ],
       ],
     );
   }
 }
 
-/// A widget card; long-press for its menu.
+/// A widget card; long-press for its menu. Cariño's own widgets sit on
+/// glass; widgets from other apps keep their own look inside a dashed frame
+/// with the app's name above.
 class _Framed extends ConsumerWidget {
-  const _Framed({required this.widget, required this.index});
+  const _Framed({required this.widgetKey, required this.index});
 
-  final BuiltinWidget widget;
+  final String widgetKey;
   final int index;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    void menu() {
+      HapticFeedback.mediumImpact();
+      showBlurPopup<void>(
+        context,
+        (_) => _WidgetMenu(index: index),
+        sheet: true,
+      );
+    }
+
+    final hostedId = WidgetKey.hostedId(widgetKey);
+    if (hostedId != null) {
+      final rows = ref.watch(
+        settingsProvider.select((s) => s.widgetRows[widgetKey] ?? 2),
+      );
+      return HostedWidget(id: hostedId, rows: rows, onLongPress: menu);
+    }
+    final builtin = WidgetKey.builtin(widgetKey);
+    if (builtin == null) return const SizedBox.shrink();
     return GestureDetector(
-      onLongPress: () {
-        HapticFeedback.mediumImpact();
-        showBlurPopup<void>(
-          context,
-          (_) => _WidgetMenu(index: index),
-          sheet: true,
-        );
-      },
+      onLongPress: menu,
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: VPalette.of(context).glassCard,
@@ -108,7 +126,7 @@ class _Framed extends ConsumerWidget {
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: switch (widget) {
+          child: switch (builtin) {
             BuiltinWidget.clock => const ClockWidget(),
             BuiltinWidget.battery => const BatteryWidget(),
             BuiltinWidget.calendar => const CalendarWidget(),
@@ -116,6 +134,75 @@ class _Framed extends ConsumerWidget {
           },
         ),
       ),
+    );
+  }
+}
+
+/// A widget from another app: the app's name, then the widget itself (a
+/// native view) in a dashed frame. Taps go to the widget; a long-press opens
+/// Cariño's menu for it.
+class HostedWidget extends ConsumerWidget {
+  const HostedWidget({
+    super.key,
+    required this.id,
+    required this.rows,
+    required this.onLongPress,
+  });
+
+  final int id;
+  final int rows;
+  final VoidCallback onLongPress;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final info = ref.watch(hostedInfoProvider(id)).value;
+    final height = rows * WidgetHost.rowHeight;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+          child: Text(
+            (info == null ? 'Widget' : '${info.app} · ${info.label}')
+                .toUpperCase(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: VText.eyebrow,
+          ),
+        ),
+        GestureDetector(
+          onLongPress: onLongPress,
+          child: VOutlined(
+            radius: 24,
+            outline: VOutline.dashed,
+            child: Padding(
+              padding: const EdgeInsets.all(6),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: LayoutBuilder(
+                  builder: (context, box) => SizedBox(
+                    height: height,
+                    child: AndroidView(
+                      key: ValueKey('aw-$id-$rows'),
+                      viewType: 'carino/appwidget',
+                      creationParams: {
+                        'id': id,
+                        'width': box.maxWidth,
+                        'height': height,
+                      },
+                      creationParamsCodec: const StandardMessageCodec(),
+                      // Taps reach the widget; a long-press stays Cariño's.
+                      gestureRecognizers: {
+                        const Factory<TapGestureRecognizer>(TapGestureRecognizer.new),
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -332,7 +419,8 @@ class _NotesWidgetState extends ConsumerState<NotesWidget> {
   }
 }
 
-/// Long-press a widget: move it, or remove it.
+/// Long-press a widget: size and configure (for widgets from other apps),
+/// move it, or remove it.
 class _WidgetMenu extends ConsumerWidget {
   const _WidgetMenu({required this.index});
 
@@ -340,9 +428,15 @@ class _WidgetMenu extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final widgets = ref.watch(settingsProvider.select((s) => s.widgets));
+    final settings = ref.watch(settingsProvider);
+    final widgets = settings.widgets;
     if (index >= widgets.length) return const SizedBox.shrink();
-    final w = widgets[index];
+    final key = widgets[index];
+    final hostedId = WidgetKey.hostedId(key);
+    final builtin = WidgetKey.builtin(key);
+    final info = hostedId == null
+        ? null
+        : ref.watch(hostedInfoProvider(hostedId)).value;
     final n = ref.read(settingsProvider.notifier);
     void move(int by) {
       final list = [...widgets];
@@ -353,13 +447,35 @@ class _WidgetMenu extends ConsumerWidget {
     }
 
     return CarinoSheet(
-      eyebrow: 'Widget',
-      title: widgetName(w),
+      eyebrow: info == null ? 'Widget' : info.app,
+      title: builtin != null ? widgetName(builtin) : (info?.label ?? 'Widget'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           VListSection(
             children: [
+              if (hostedId != null)
+                VListRow(
+                  title: 'Size',
+                  trailing: VSegmented<int>(
+                    compact: true,
+                    segments: const {1: 'S', 2: 'M', 3: 'L', 4: 'XL'},
+                    value: settings.widgetRows[key] ?? info?.rows ?? 2,
+                    onChanged: (v) => n.update(
+                      (s) => s.copyWith(widgetRows: {...s.widgetRows, key: v}),
+                    ),
+                  ),
+                ),
+              if (hostedId != null && (info?.configurable ?? false))
+                VListRow(
+                  title: 'Configure',
+                  leading: const VIconView(VIcon.gear, size: 18),
+                  chevron: false,
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    WidgetHost.configure(hostedId);
+                  },
+                ),
               if (index > 0)
                 VListRow(
                   title: 'Move up',
@@ -381,8 +497,12 @@ class _WidgetMenu extends ConsumerWidget {
             'Remove widget',
             onPressed: () {
               n.update(
-                (s) => s.copyWith(widgets: [...widgets]..removeAt(index)),
+                (s) => s.copyWith(
+                  widgets: [...widgets]..removeAt(index),
+                  widgetRows: {...s.widgetRows}..remove(key),
+                ),
               );
+              if (hostedId != null) WidgetHost.remove(hostedId);
               Navigator.of(context).pop();
             },
           ),
@@ -392,19 +512,47 @@ class _WidgetMenu extends ConsumerWidget {
   }
 }
 
-/// Widgets › Add.
+/// Widgets › Add: Cariño's own widgets, then every app's widgets.
 Future<void> showAddWidget(BuildContext context) =>
     showBlurPopup<void>(context, (_) => const _AddWidget(), sheet: true);
 
-class _AddWidget extends ConsumerWidget {
+class _AddWidget extends ConsumerStatefulWidget {
   const _AddWidget();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_AddWidget> createState() => _AddWidgetState();
+}
+
+class _AddWidgetState extends ConsumerState<_AddWidget> {
+  late final Future<List<WidgetProvider>> _providers = WidgetHost.providers();
+  String? _open;
+  bool _adding = false;
+
+  Future<void> _addHosted(WidgetProvider p) async {
+    if (_adding) return;
+    setState(() => _adding = true);
+    final id = await WidgetHost.add(p);
+    if (!mounted) return;
+    setState(() => _adding = false);
+    if (id == null) return;
+    final key = WidgetKey.hosted(id);
+    ref
+        .read(settingsProvider.notifier)
+        .update(
+          (s) => s.copyWith(
+            widgets: [...s.widgets, key],
+            widgetRows: {...s.widgetRows, key: p.rows},
+          ),
+        );
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final have = ref.watch(settingsProvider.select((s) => s.widgets));
     final missing = [
       for (final w in BuiltinWidget.values)
-        if (!have.contains(w)) w,
+        if (!have.contains(w.name)) w,
     ];
     return CarinoSheet(
       title: 'Add widget',
@@ -434,14 +582,125 @@ class _AddWidget extends ConsumerWidget {
                       ref
                           .read(settingsProvider.notifier)
                           .update(
-                            (s) => s.copyWith(widgets: [...s.widgets, w]),
+                            (s) => s.copyWith(widgets: [...s.widgets, w.name]),
                           );
                       Navigator.of(context).pop();
                     },
                   ),
               ],
             ),
+          const SizedBox(height: 20),
+          const VEyebrow('From your apps'),
+          const SizedBox(height: 10),
+          FutureBuilder<List<WidgetProvider>>(
+            future: _providers,
+            builder: (context, snap) {
+              final all = snap.data;
+              if (all == null) {
+                return const Padding(
+                  padding: EdgeInsets.all(20),
+                  child: Center(child: DotLoader()),
+                );
+              }
+              if (all.isEmpty) {
+                return const VFootnote('No app on this phone offers widgets.');
+              }
+              final byApp = <String, List<WidgetProvider>>{};
+              for (final p in all) {
+                (byApp[p.app] ??= []).add(p);
+              }
+              return VListSection(
+                children: [
+                  for (final e in byApp.entries) ...[
+                    VListRow(
+                      title: e.key,
+                      value:
+                          '${e.value.length} ${e.value.length == 1 ? 'widget' : 'widgets'}',
+                      chevron: false,
+                      trailing: VIconView(
+                        _open == e.key ? VIcon.swipeUp : VIcon.down,
+                        size: 16,
+                      ),
+                      onTap: () =>
+                          setState(() => _open = _open == e.key ? null : e.key),
+                    ),
+                    if (_open == e.key)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
+                        child: Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: [
+                            for (final p in e.value)
+                              _ProviderTile(
+                                provider: p,
+                                onTap: () => _addHosted(p),
+                              ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ],
+              );
+            },
+          ),
         ],
+      ),
+    );
+  }
+}
+
+/// One of an app's widgets: its preview and name, in a dashed frame.
+class _ProviderTile extends StatelessWidget {
+  const _ProviderTile({required this.provider, required this.onTap});
+
+  final WidgetProvider provider;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(
+        width: 150,
+        child: VOutlined(
+          radius: 16,
+          outline: VOutline.dashed,
+          child: Padding(
+            padding: const EdgeInsets.all(6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  height: 84,
+                  child: FutureBuilder<Uint8List?>(
+                    future: WidgetHost.preview(provider),
+                    builder: (context, snap) => snap.data == null
+                        ? const SizedBox.shrink()
+                        : ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.memory(
+                              snap.data!,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  provider.label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: VText.inter(12, weight: 500),
+                ),
+                Text(
+                  '${provider.minWidth}×${provider.minHeight} dp',
+                  style: VText.secondary,
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

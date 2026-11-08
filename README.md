@@ -6,7 +6,7 @@
 
 **A quiet Android home screen. Black and white, with your wallpaper as the only colour.**
 
-![Version](https://img.shields.io/badge/version-1.0.0-000000?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.1.0-000000?style=flat-square)
 ![Release](https://img.shields.io/github/v/release/isg32/carino?style=flat-square&color=000000&label=release)
 ![Flutter](https://img.shields.io/badge/Flutter-3.47-000000?style=flat-square&logo=flutter&logoColor=white)
 ![Platform](https://img.shields.io/badge/platform-Android-000000?style=flat-square&logo=android&logoColor=white)

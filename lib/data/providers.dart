@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../platform/launcher.dart';
+import '../platform/widget_host.dart';
 import 'models.dart';
 
 /// Set in `main` once preferences are loaded.
@@ -425,6 +426,11 @@ final lockAccessProvider = StreamProvider<bool>((ref) async* {
       .where((e) => e['type'] == 'resume')
       .map((e) => (e['lockAccess'] as bool?) ?? false);
 });
+
+/// What a hosted widget is (its app and name), for its label and menu.
+final hostedInfoProvider = FutureProvider.family<WidgetProvider?, int>(
+  (ref, id) => WidgetHost.info(id),
+);
 
 /// The next calendar event, refreshed each minute while Cariño is in front.
 final nextEventProvider = FutureProvider<CalendarEvent?>((ref) async {

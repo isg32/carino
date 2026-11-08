@@ -221,6 +221,22 @@ enum GestureAction { search, notifications, customise, apps, lock, nothing }
 /// The built-in widgets on the Widgets tab.
 enum BuiltinWidget { clock, battery, calendar, notes }
 
+/// A Widgets tab entry: a built-in widget's name, or `aw:<id>` for a widget
+/// from another app, hosted by Android.
+abstract final class WidgetKey {
+  static String hosted(int id) => 'aw:$id';
+
+  static int? hostedId(String key) =>
+      key.startsWith('aw:') ? int.tryParse(key.substring(3)) : null;
+
+  static BuiltinWidget? builtin(String key) {
+    for (final w in BuiltinWidget.values) {
+      if (w.name == key) return w;
+    }
+    return null;
+  }
+}
+
 /// Everything in Settings, plus the Widgets tab's contents and Essentials.
 class CarinoSettings {
   const CarinoSettings({
@@ -250,12 +266,8 @@ class CarinoSettings {
       'alarm',
       'camera',
     ],
-    this.widgets = const [
-      BuiltinWidget.clock,
-      BuiltinWidget.battery,
-      BuiltinWidget.calendar,
-      BuiltinWidget.notes,
-    ],
+    this.widgets = const ['clock', 'battery', 'calendar', 'notes'],
+    this.widgetRows = const {},
     this.note = '',
     this.photos = const [],
     this.dots = true,
@@ -301,11 +313,15 @@ class CarinoSettings {
           k! as String,
       ],
       widgets: [
-        for (final k
-            in (j['widgets'] as List<Object?>?) ??
-                [for (final w in d.widgets) w.name])
-          e(BuiltinWidget.values, k, BuiltinWidget.clock),
+        for (final k in (j['widgets'] as List<Object?>?) ?? d.widgets)
+          k! as String,
       ],
+      widgetRows: {
+        for (final e
+            in ((j['widgetRows'] as Map<Object?, Object?>?) ?? const {})
+                .entries)
+          e.key! as String: e.value! as int,
+      },
       note: (j['note'] as String?) ?? '',
       vaultHash: j['vaultHash'] as String?,
       vaultSalt: j['vaultSalt'] as String?,
@@ -338,7 +354,12 @@ class CarinoSettings {
   final Set<String> hidden;
   final bool hiddenFindByName;
   final List<String> essentials;
-  final List<BuiltinWidget> widgets;
+
+  /// The Widgets tab, in order (see [WidgetKey]).
+  final List<String> widgets;
+
+  /// Height of each hosted widget, in rows (1–4).
+  final Map<String, int> widgetRows;
 
   /// The Notes widget's text.
   final String note;
@@ -383,7 +404,8 @@ class CarinoSettings {
     Set<String>? hidden,
     bool? hiddenFindByName,
     List<String>? essentials,
-    List<BuiltinWidget>? widgets,
+    List<String>? widgets,
+    Map<String, int>? widgetRows,
     String? note,
     List<String>? photos,
     bool? dots,
@@ -412,6 +434,7 @@ class CarinoSettings {
     hiddenFindByName: hiddenFindByName ?? this.hiddenFindByName,
     essentials: essentials ?? this.essentials,
     widgets: widgets ?? this.widgets,
+    widgetRows: widgetRows ?? this.widgetRows,
     note: note ?? this.note,
     photos: photos ?? this.photos,
     dots: dots ?? this.dots,
@@ -441,7 +464,8 @@ class CarinoSettings {
     'hidden': hidden.toList(),
     'hiddenFindByName': hiddenFindByName,
     'essentials': essentials,
-    'widgets': [for (final w in widgets) w.name],
+    'widgets': widgets,
+    'widgetRows': widgetRows,
     'note': note,
     'photos': photos,
     'dots': dots,
