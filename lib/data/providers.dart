@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../platform/launcher.dart';
 import '../platform/widget_host.dart';
 import 'models.dart';
+import 'weather.dart';
 
 /// Set in `main` once preferences are loaded.
 final prefsProvider = Provider<SharedPreferences>(
@@ -464,6 +465,55 @@ final permissionProvider = StreamProvider.family<bool, String>((
   yield* Launcher.events
       .where((e) => e['type'] == 'resume')
       .asyncMap((_) => Launcher.hasPermission(name));
+});
+
+/// The weather, when turned on: fetched at most every 30 minutes, only
+/// while Cariño is in front, and cached so Home has it at once.
+final weatherProvider = FutureProvider<Weather?>((ref) async {
+  final (on, place, fahrenheit) = ref.watch(
+    settingsProvider.select(
+      (s) => (s.weatherOn, s.weatherPlace, s.weatherFahrenheit),
+    ),
+  );
+  if (!on) return null;
+  ref.watch(nowProvider);
+  final prefs = ref.read(prefsProvider);
+  final key = jsonEncode({'p': place?.toJson(), 'f': fahrenheit});
+  Weather? cached;
+  try {
+    final raw = prefs.getString('weather_cache');
+    if (raw != null) {
+      final j = (jsonDecode(raw) as Map<Object?, Object?>)
+          .cast<String, Object?>();
+      if (j['key'] == key) {
+        cached = Weather.fromJson(
+          (j['weather']! as Map<Object?, Object?>).cast<String, Object?>(),
+        );
+      }
+    }
+  } catch (_) {}
+  final now = DateTime.now();
+  if (cached != null &&
+      now.difference(cached.at) < const Duration(minutes: 30)) {
+    return cached;
+  }
+  try {
+    final where = place ?? await Launcher.lastLocation();
+    if (where == null) return cached;
+    final fresh = await WeatherService.fetch(where, fahrenheit: fahrenheit);
+    await prefs.setString(
+      'weather_cache',
+      jsonEncode({'key': key, 'weather': fresh.toJson()}),
+    );
+    return fresh;
+  } catch (_) {
+    // Offline or the service is down: keep showing a recent reading.
+    if (cached != null &&
+        now.difference(cached.at) < const Duration(hours: 6)) {
+      return cached;
+    }
+    return null;
+  }
 });
 
 /// Up next, refreshed each minute while Cariño is in front.

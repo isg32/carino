@@ -20,6 +20,7 @@ import '../../data/providers.dart';
 import '../../platform/launcher.dart';
 import '../../platform/widget_host.dart';
 import '../common/dot_loader.dart';
+import '../settings/weather_settings.dart';
 import '../common/popup.dart';
 
 /// The Widgets tab: Cariño's own widgets, in the order you set.
@@ -132,6 +133,7 @@ class _Framed extends ConsumerWidget {
             BuiltinWidget.media => const MediaWidget(),
             BuiltinWidget.upNext => const UpNextWidget(),
             BuiltinWidget.clock => const ClockWidget(),
+            BuiltinWidget.weather => const WeatherWidget(),
             BuiltinWidget.battery => const BatteryWidget(),
             BuiltinWidget.calendar => const CalendarWidget(),
             BuiltinWidget.notes => const NotesWidget(),
@@ -216,6 +218,7 @@ String widgetName(BuiltinWidget w) => switch (w) {
   BuiltinWidget.media => 'Now playing',
   BuiltinWidget.upNext => 'Up next',
   BuiltinWidget.clock => 'Clock',
+  BuiltinWidget.weather => 'Weather',
   BuiltinWidget.battery => 'Battery',
   BuiltinWidget.calendar => 'Calendar',
   BuiltinWidget.notes => 'Notes',
@@ -605,6 +608,76 @@ class ClockWidget extends ConsumerWidget {
   }
 }
 
+/// Weather now and today's high and low. Off until turned on in Settings,
+/// since it is the one thing in Cariño that uses the network.
+class WeatherWidget extends ConsumerWidget {
+  const WeatherWidget({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(settingsProvider);
+    final weather = ref.watch(weatherProvider).value;
+    void open() => Navigator.of(context).push(
+      CupertinoPageRoute<void>(builder: (_) => const WeatherSettingsPage()),
+    );
+
+    if (!settings.weatherOn || weather == null) {
+      return Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('WEATHER', style: VText.eyebrow),
+                const SizedBox(height: 4),
+                Text(
+                  settings.weatherOn ? 'Waiting for the weather' : 'Off',
+                  style: VText.inter(14, weight: 300),
+                ),
+              ],
+            ),
+          ),
+          VPill(
+            settings.weatherOn ? 'Place' : 'Turn on',
+            fill: VFill.outline,
+            onTap: open,
+          ),
+        ],
+      );
+    }
+    final place = settings.weatherPlace?.name.split(',').first;
+    return GestureDetector(
+      onTap: open,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  place == null ? 'WEATHER' : place.toUpperCase(),
+                  style: VText.eyebrow,
+                ),
+              ),
+              const VIconView(VIcon.cloud, size: 20),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '${weather.temperature.round()}°',
+            style: VText.doto(46, weight: 800, height: 1),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '${weather.condition} · H ${weather.high.round()}° L ${weather.low.round()}°',
+            style: VText.secondary,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class BatteryWidget extends ConsumerWidget {
   const BatteryWidget({super.key});
 
@@ -931,6 +1004,7 @@ class _AddWidgetState extends ConsumerState<_AddWidget> {
                       BuiltinWidget.media => VIcon.music,
                       BuiltinWidget.upNext => VIcon.calendar,
                       BuiltinWidget.clock => VIcon.clock,
+                      BuiltinWidget.weather => VIcon.cloud,
                       BuiltinWidget.battery => VIcon.battery,
                       BuiltinWidget.calendar => VIcon.calendar,
                       BuiltinWidget.notes => VIcon.edit,

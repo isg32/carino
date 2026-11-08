@@ -21,6 +21,7 @@ import '../search/search_sheet.dart';
 import '../widgets/widgets_page.dart';
 import '../vault/vault.dart';
 import 'about_page.dart';
+import 'weather_settings.dart';
 
 void _push(BuildContext context, Widget page) =>
     Navigator.of(context).push(CupertinoPageRoute<void>(builder: (_) => page));
@@ -59,6 +60,14 @@ class SettingsPage extends ConsumerWidget {
               subtitle:
                   '${s.appsView == AppsView.list ? 'List' : 'Grid'} view · web: ${s.webEngine}',
               onTap: () => _push(context, const AppsSearchPage()),
+            ),
+            VListRow(
+              leading: const _RowIcon(VIcon.cloud),
+              title: 'Weather',
+              subtitle: s.weatherOn
+                  ? (s.weatherPlace?.name.split(',').first ?? 'Here')
+                  : 'Off · the only thing that uses the internet',
+              onTap: () => _push(context, const WeatherSettingsPage()),
             ),
             VListRow(
               leading: const _RowIcon(VIcon.widgets),

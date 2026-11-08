@@ -1,3 +1,5 @@
+import 'weather.dart';
+
 /// An app Cariño can launch: one launcher activity in one profile.
 class AppEntry {
   const AppEntry({
@@ -219,7 +221,7 @@ enum SearchMode { apps, essentials }
 enum GestureAction { search, notifications, customise, apps, lock, nothing }
 
 /// The built-in widgets on the Widgets tab.
-enum BuiltinWidget { media, upNext, clock, battery, calendar, notes }
+enum BuiltinWidget { media, upNext, clock, weather, battery, calendar, notes }
 
 /// A Widgets tab entry: a built-in widget's name, or `aw:<id>` for a widget
 /// from another app, hosted by Android.
@@ -281,6 +283,9 @@ class CarinoSettings {
     this.showNextEvent = false,
     this.searchContacts = false,
     this.searchSettings = true,
+    this.weatherOn = false,
+    this.weatherPlace,
+    this.weatherFahrenheit = false,
     this.vaultHash,
     this.vaultSalt,
   });
@@ -342,6 +347,14 @@ class CarinoSettings {
       showNextEvent: (j['showNextEvent'] as bool?) ?? false,
       searchContacts: (j['searchContacts'] as bool?) ?? false,
       searchSettings: (j['searchSettings'] as bool?) ?? true,
+      weatherOn: (j['weatherOn'] as bool?) ?? false,
+      weatherPlace: j['weatherPlace'] == null
+          ? null
+          : WeatherPlace.fromJson(
+              (j['weatherPlace']! as Map<Object?, Object?>)
+                  .cast<String, Object?>(),
+            ),
+      weatherFahrenheit: (j['weatherFahrenheit'] as bool?) ?? false,
       photos: [
         for (final p in (j['photos'] as List<Object?>?) ?? const [])
           p! as String,
@@ -393,6 +406,14 @@ class CarinoSettings {
   /// System settings pages in Search.
   final bool searchSettings;
 
+  /// Weather (off until turned on: it is the one thing that uses the
+  /// network).
+  final bool weatherOn;
+
+  /// Where for; null means the phone's last known place.
+  final WeatherPlace? weatherPlace;
+  final bool weatherFahrenheit;
+
   /// Photos picked as wallpapers, kept for the Wallpaper sheet.
   final List<String> photos;
 
@@ -430,6 +451,9 @@ class CarinoSettings {
     bool? showNextEvent,
     bool? searchContacts,
     bool? searchSettings,
+    bool? weatherOn,
+    WeatherPlace? Function()? weatherPlace,
+    bool? weatherFahrenheit,
     ({String hash, String salt})? passcode,
     bool clearPasscode = false,
   }) => CarinoSettings(
@@ -460,6 +484,9 @@ class CarinoSettings {
     showNextEvent: showNextEvent ?? this.showNextEvent,
     searchContacts: searchContacts ?? this.searchContacts,
     searchSettings: searchSettings ?? this.searchSettings,
+    weatherOn: weatherOn ?? this.weatherOn,
+    weatherPlace: weatherPlace != null ? weatherPlace() : this.weatherPlace,
+    weatherFahrenheit: weatherFahrenheit ?? this.weatherFahrenheit,
     vaultHash: clearPasscode ? null : (passcode?.hash ?? vaultHash),
     vaultSalt: clearPasscode ? null : (passcode?.salt ?? vaultSalt),
   );
@@ -492,6 +519,9 @@ class CarinoSettings {
     'showNextEvent': showNextEvent,
     'searchContacts': searchContacts,
     'searchSettings': searchSettings,
+    'weatherOn': weatherOn,
+    'weatherPlace': weatherPlace?.toJson(),
+    'weatherFahrenheit': weatherFahrenheit,
     'vaultHash': vaultHash,
     'vaultSalt': vaultSalt,
   };

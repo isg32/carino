@@ -6,7 +6,7 @@
 
 **A quiet Android home screen. Black and white, with your wallpaper as the only colour.**
 
-![Version](https://img.shields.io/badge/version-1.4.1-000000?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.5.0-000000?style=flat-square)
 ![Release](https://img.shields.io/github/v/release/isg32/carino?style=flat-square&color=000000&label=release)
 ![Flutter](https://img.shields.io/badge/Flutter-3.47-000000?style=flat-square&logo=flutter&logoColor=white)
 ![Platform](https://img.shields.io/badge/platform-Android-000000?style=flat-square&logo=android&logoColor=white)
@@ -35,7 +35,7 @@ There are only three places, **Home**, **Apps** and **Widgets**, under one glass
 | **Your wallpaper is the colour** | The interface is pure black and white: white ink on dark wallpapers, black on light ones. App icons are monochrome unless a layout asks for colour. |
 | **Calm** | No feeds, no suggestions, no badges but a single dot. Motion is short and soft; glass and blur instead of panels. |
 | **Light on the phone** | Nothing redraws in the background, the clock ticks once a minute, blurs are made once and saved, and the app list and icons are cached. |
-| **Private** | No account, no network, no analytics. Calendar and contacts are optional and only read on the phone. |
+| **Private** | No account, no analytics. Calendar and contacts are optional and only read on the phone. The one thing that ever uses the internet is weather, off until you turn it on. |
 
 Cariño's design language is Veronica's, carried over from [Idris](https://github.com/isg32/idris): pure black and white, the Doto dot-matrix face with Inter, 1 px ink outlines and frosted glass. [Launcher3](https://github.com/The-Clover-Project/packages_apps_Launcher3) is the reference for what a launcher has to do; the interface is Cariño's own.
 
@@ -52,9 +52,10 @@ Cariño's design language is Veronica's, carried over from [Idris](https://githu
 | **Apps** | Every app A–Z as a list or a grid, a letter scrubber with haptics, "New" badges and a Work section. Long-press any app for its shortcuts, Add to Home, Hide, Uninstall and App info. |
 | **Notification dots** | A single ink dot on apps with notifications, counted the way Launcher3 does: only apps that allow dots, never ongoing ones. |
 | **Search** | One field, two modes: your apps, people, system settings ("wifi", "battery") and the web; or your Essentials, quick toggles and tools you choose and order. Swipe down to close. |
-| **Widgets** | Cariño's own Now playing (any app's music, with progress, pause and next), Up next (today's events and your next alarm), Clock, Battery, Calendar and Notes widgets, and widgets from your other apps in their own colours inside a dashed frame. Add, resize, configure, reorder, remove. |
+| **Widgets** | Cariño's own Now playing (any app's music, with progress, pause and next), Up next (today's events and your next alarm), Clock, Weather, Battery, Calendar and Notes widgets, and widgets from your other apps in their own colours inside a dashed frame. Add, resize, configure, reorder, remove. |
 | **Customise** | Long-press Home and it zooms out into its own card. Keep several layouts, each with its own wallpaper (built-in, or your photos with dim and blur), ink, glass strength, mono or coloured icons, frosted icon backgrounds, columns and favourite rows. |
 | **Hidden apps** | Hide any app. Spread two fingers on Home and enter your passcode to open them as a folder. |
+| **Weather** | Optional, off by default: the temperature and sky on Home and a Weather widget, from Open-Meteo (no account or key). Only the place's coordinates are sent, at most every 30 minutes, while Cariño is on screen. The place is a city you search for, or the phone's last known approximate one; never GPS. |
 | **Wallpaper** | Changes the moment you choose it and cross-fades in. Android's own wallpaper follows the layout as a soft blurred copy, so Recents and app transitions match. |
 | **Opening apps** | Apps slide in from the right while Cariño blurs behind them, and un-blur when you come back. |
 | **First run** | Set Cariño as your home app, then a single page of optional permissions, each turning on one thing. |
@@ -88,7 +89,7 @@ Cariño's design language is Veronica's, carried over from [Idris](https://githu
   <img src="docs/screenshots/map.png" alt="Cariño's screens and features map: core tabs, search and customise, popups and sheets, and settings pages" width="100%">
 </p>
 
-These are renders of the design, made in Claude Design. Weather, drawn there too, is still on the [roadmap](#roadmap).
+These are renders of the design, made in Claude Design.
 
 ---
 
@@ -201,6 +202,7 @@ Each one turns on a single thing, and Cariño works without any of them:
 | Accessibility ("Cariño: double-tap to lock") | Locking the screen on a double-tap; it reads nothing |
 | Calendar | The next event on Home |
 | Contacts | People in Search |
+| Approximate location | Weather "here", if you choose it over a city |
 
 ### Signed releases
 
@@ -214,12 +216,6 @@ Without these, release builds fall back to the debug key.
 ### Installing a release
 
 Signed APKs are attached to every [release](https://github.com/isg32/carino/releases). For most phones, use `app-arm64-v8a-release.apk`.
-
----
-
-## Roadmap
-
-- Weather on Home (would need the network, so it will be opt-in)
 
 ---
 

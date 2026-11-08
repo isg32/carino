@@ -15,6 +15,10 @@
     <uses-permission android:name="android.permission.READ_CALENDAR" />
     <!-- people in Search -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <!-- weather, when turned on: the approximate place (never GPS) -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- weather, when turned on: the only thing Cariño fetches -->
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:label="Cariño"

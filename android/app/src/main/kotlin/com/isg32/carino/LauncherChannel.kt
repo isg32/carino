@@ -341,6 +341,7 @@ class LauncherChannel(
                         activity.requestPermissions(arrayOf(permission), REQUEST_PERMISSION)
                     }
                 }
+                "lastLocation" -> result.success(lastLocation())
                 "upNext" -> worker.execute {
                     val events = try {
                         todaysEvents()
@@ -592,6 +593,7 @@ class LauncherChannel(
     private fun permissionFor(name: String) = when (name) {
         "calendar" -> android.Manifest.permission.READ_CALENDAR
         "contacts" -> android.Manifest.permission.READ_CONTACTS
+        "location" -> android.Manifest.permission.ACCESS_COARSE_LOCATION
         else -> throw IllegalArgumentException(name)
     }
 
@@ -628,6 +630,25 @@ class LauncherChannel(
             )
         }
         return null
+    }
+
+    /**
+     * The phone's last known approximate place, from whatever already asked
+     * for one. Never turns on GPS or waits for a fix.
+     */
+    private fun lastLocation(): Map<String, Double>? {
+        if (!granted(android.Manifest.permission.ACCESS_COARSE_LOCATION)) return null
+        val lm = activity.getSystemService(android.location.LocationManager::class.java)
+        val best = lm.getProviders(true)
+            .mapNotNull {
+                try {
+                    lm.getLastKnownLocation(it)
+                } catch (_: SecurityException) {
+                    null
+                }
+            }
+            .maxByOrNull { it.time } ?: return null
+        return mapOf("lat" to best.latitude, "lon" to best.longitude)
     }
 
     /** What's left of today: events that haven't ended, all-day ones first. */

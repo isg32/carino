@@ -146,7 +146,10 @@ class _ClockHeader extends ConsumerWidget {
     final time = DateFormat(settings.clock24 ? 'HH:mm' : 'h:mm').format(now);
     final event = preview ? null : ref.watch(nextEventProvider).value;
     final hm = DateFormat(settings.clock24 ? 'HH:mm' : 'h:mm a');
+    final weather = preview ? null : ref.watch(weatherProvider).value;
     final glance = <String>[
+      if (weather != null)
+        '${weather.temperature.round()}° ${weather.condition.toLowerCase()}',
       if (settings.showBattery && battery != null)
         '${battery.level}%${battery.charging ? ' · charging' : ''}',
       if (event != null)

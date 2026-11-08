@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../data/models.dart';
+import '../data/weather.dart';
 
 /// Dart side of `LauncherChannel.kt`: everything Cariño asks of Android.
 abstract final class Launcher {
@@ -207,6 +208,13 @@ abstract final class Launcher {
   static Future<UpNext> upNext() async {
     final m = await _methods.invokeMapMethod<Object?, Object?>('upNext');
     return m == null ? const UpNext([], null) : UpNext.fromMap(m);
+  }
+
+  /// The phone's last known approximate place (needs location access).
+  static Future<WeatherPlace?> lastLocation() async {
+    final m = await _methods.invokeMapMethod<String, double>('lastLocation');
+    if (m == null) return null;
+    return WeatherPlace('', m['lat']!, m['lon']!);
   }
 
   static Future<void> torch(bool on) =>
