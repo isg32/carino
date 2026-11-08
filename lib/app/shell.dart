@@ -89,7 +89,7 @@ class ShellState extends ConsumerState<Shell> with TickerProviderStateMixin {
     if (prefs.getString('system_wallpaper') == signature) return;
     _syncing = true;
     try {
-      final png = await renderWallpaperPng(layout, size);
+      final png = await renderWallpaperPng(layout, size, soft: true);
       if (png != null && await Launcher.setSystemWallpaperBytes(png, 'home')) {
         await prefs.setString('system_wallpaper', signature);
       }

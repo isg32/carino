@@ -12,7 +12,61 @@ import 'wallpaper.dart';
 
 /// Renders a layout's wallpaper exactly as Home draws it (palette or photo,
 /// blur and dim) at [size] physical pixels, as a PNG.
-Future<Uint8List?> renderWallpaperPng(HomeLayout layout, ui.Size size) async {
+///
+/// With [soft], the result is heavily blurred: that is what Android itself
+/// gets, so a size or crop difference in Recents and app transitions just
+/// reads as a soft background. It is made cheaply by rendering a tiny copy
+/// and drawing it back up through a blur.
+Future<Uint8List?> renderWallpaperPng(
+  HomeLayout layout,
+  ui.Size size, {
+  bool soft = false,
+}) async {
+  if (soft) {
+    final small = ui.Size(
+      (size.width / 8).roundToDouble(),
+      (size.height / 8).roundToDouble(),
+    );
+    final tiny = await _render(layout, small);
+    if (tiny == null) return null;
+    final recorder = ui.PictureRecorder();
+    final canvas = ui.Canvas(recorder);
+    final rect = ui.Offset.zero & size;
+    // Blur a little beyond the edges so they stay as dark/bright as the rest.
+    canvas.drawImageRect(
+      tiny,
+      ui.Offset.zero & small,
+      rect.inflate(size.width * 0.06),
+      ui.Paint()
+        ..filterQuality = ui.FilterQuality.high
+        ..imageFilter = ui.ImageFilter.blur(
+          sigmaX: size.width / 28,
+          sigmaY: size.width / 28,
+          tileMode: ui.TileMode.clamp,
+        ),
+    );
+    tiny.dispose();
+    return _png(recorder, size);
+  }
+  final image = await _render(layout, size);
+  if (image == null) return null;
+  final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+  image.dispose();
+  return bytes?.buffer.asUint8List();
+}
+
+Future<Uint8List?> _png(ui.PictureRecorder recorder, ui.Size size) async {
+  final image = await recorder.endRecording().toImage(
+    size.width.round(),
+    size.height.round(),
+  );
+  final png = await image.toByteData(format: ui.ImageByteFormat.png);
+  image.dispose();
+  return png?.buffer.asUint8List();
+}
+
+/// The wallpaper as Home draws it, as an image.
+Future<ui.Image?> _render(HomeLayout layout, ui.Size size) async {
   final recorder = ui.PictureRecorder();
   final canvas = ui.Canvas(recorder);
   final rect = ui.Offset.zero & size;
@@ -51,18 +105,16 @@ Future<Uint8List?> renderWallpaperPng(HomeLayout layout, ui.Size size) async {
         ..color = VColors.black.withValues(alpha: layout.dim.clamp(0, 0.8)),
     );
   }
-  final image = await recorder.endRecording().toImage(
+  return recorder.endRecording().toImage(
     size.width.round(),
     size.height.round(),
   );
-  final png = await image.toByteData(format: ui.ImageByteFormat.png);
-  image.dispose();
-  return png?.buffer.asUint8List();
 }
 
 /// What the system wallpaper was last set from, so it is only set again
 /// when something that shows actually changed.
 String wallpaperSignature(HomeLayout l, ui.Size size) => jsonEncode({
+  'soft': 1,
   'w': l.wallpaper.toJson(),
   'd': l.dim,
   'b': l.blur,
