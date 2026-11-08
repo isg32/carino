@@ -6,7 +6,7 @@
 
 **A quiet Android home screen. Black and white, with your wallpaper as the only colour.**
 
-![Version](https://img.shields.io/badge/version-1.7.1-000000?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.7.2-000000?style=flat-square)
 ![Release](https://img.shields.io/github/v/release/isg32/carino?style=flat-square&color=000000&label=release)
 ![Flutter](https://img.shields.io/badge/Flutter-3.47-000000?style=flat-square&logo=flutter&logoColor=white)
 ![Platform](https://img.shields.io/badge/platform-Android-000000?style=flat-square&logo=android&logoColor=white)
@@ -219,7 +219,7 @@ Without these, release builds fall back to the debug key.
 
 ### Installing a release
 
-Signed APKs are attached to every [release](https://github.com/isg32/carino/releases). For most phones, use `app-arm64-v8a-release.apk`.
+Signed APKs are attached to every [release](https://github.com/isg32/carino/releases). For most phones, use `app-arm64-v8a-release.apk`. What changed in each one is in the [changelog](CHANGELOG.md).
 
 ---
 
