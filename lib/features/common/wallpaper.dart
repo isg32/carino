@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 
@@ -8,8 +9,45 @@ import 'package:flutter/widgets.dart';
 import '../../core/theme/v_colors.dart';
 import '../../data/models.dart';
 
+/// The image a photo wallpaper is drawn from: the blurred copy when one is
+/// asked for and made, else the photo, always at the same decode size, so
+/// every view of the same wallpaper shares one decoded image.
+ImageProvider wallpaperImage(
+  String photo, {
+  double blur = 0,
+  bool soft = false,
+}) {
+  if (soft) return ResizeImage(FileImage(File(photo)), width: 40);
+  if (blur > 0.01 && blurReady(photo, blur)) {
+    return FileImage(File(bakedPath(photo, blur)));
+  }
+  return ResizeImage(FileImage(File(photo)), width: blur > 0.01 ? 720 : 1440);
+}
+
+/// Decodes [image] (if not already) and completes when it can be drawn.
+Future<void> warmImage(ImageProvider image) {
+  final done = Completer<void>();
+  final stream = image.resolve(ImageConfiguration.empty);
+  late final ImageStreamListener listener;
+  void finish() {
+    if (!done.isCompleted) done.complete();
+    stream.removeListener(listener);
+  }
+
+  listener = ImageStreamListener(
+    (_, _) => finish(),
+    onError: (_, _) => finish(),
+  );
+  stream.addListener(listener);
+  return done.future;
+}
+
 /// Draws a layout's wallpaper: a built-in palette or a photo, with its dim.
-class WallpaperView extends StatelessWidget {
+///
+/// When the wallpaper changes, the new one is decoded first and then fades
+/// in over the old one, so a layout switch never shows an empty or
+/// half-loaded frame.
+class WallpaperView extends StatefulWidget {
   const WallpaperView({
     super.key,
     required this.wallpaper,
@@ -31,47 +69,98 @@ class WallpaperView extends StatelessWidget {
   final bool soft;
 
   @override
-  Widget build(BuildContext context) {
-    final photo = wallpaper.photo;
-    if (photo != null && blur > 0.01 && !soft) {
-      final baked = File(bakedPath(photo, blur));
-      if (baked.existsSync()) {
-        return _withDim(
-          Image.file(baked, fit: BoxFit.cover, gaplessPlayback: true),
-        );
-      }
-      return _withDim(
-        ImageFiltered(
-          imageFilter: ui.ImageFilter.blur(
-            sigmaX: blur * 30,
-            sigmaY: blur * 30,
-            tileMode: TileMode.clamp,
-          ),
-          child: Image.file(File(photo), fit: BoxFit.cover, cacheWidth: 720),
-        ),
-      );
+  State<WallpaperView> createState() => _WallpaperViewState();
+}
+
+class _WallpaperViewState extends State<WallpaperView> {
+  late _Shown _shown = _Shown.of(widget);
+  int _generation = 0;
+
+  @override
+  void didUpdateWidget(WallpaperView old) {
+    super.didUpdateWidget(old);
+    final next = _Shown.of(widget);
+    if (next.key == _shown.key) return;
+    final generation = ++_generation;
+    final image = next.image;
+    if (image == null) {
+      setState(() => _shown = next);
+      return;
     }
-    final Widget base = photo != null
-        ? Image.file(
-            File(photo),
-            fit: BoxFit.cover,
-            cacheWidth: soft ? 40 : 1440,
-            filterQuality: soft ? FilterQuality.high : FilterQuality.medium,
-            gaplessPlayback: true,
-            errorBuilder: (_, _, _) => const _Palette(VWallpapers.night),
-          )
-        : _Palette(VWallpapers.all[wallpaper.builtin] ?? VWallpapers.night);
-    return _withDim(base);
+    // Keep showing the old wallpaper until the new one is decoded.
+    warmImage(image).then((_) {
+      if (mounted && generation == _generation) setState(() => _shown = next);
+    });
   }
 
-  Widget _withDim(Widget base) => Stack(
-    fit: StackFit.expand,
-    children: [
-      base,
-      if (dim > 0)
-        ColoredBox(color: VColors.black.withValues(alpha: dim.clamp(0, 0.8))),
-    ],
-  );
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 320),
+      switchInCurve: Curves.easeOutCubic,
+      layoutBuilder: (current, previous) =>
+          Stack(fit: StackFit.expand, children: [...previous, ?current]),
+      child: KeyedSubtree(key: ValueKey(_shown.key), child: _shown.build()),
+    );
+  }
+}
+
+/// One wallpaper as it is drawn, with a key that changes exactly when what
+/// shows changes.
+class _Shown {
+  _Shown(this.key, this.image, this.build);
+
+  factory _Shown.of(WallpaperView w) {
+    final photo = w.wallpaper.photo;
+    final dim = w.dim.clamp(0.0, 0.8);
+    Widget withDim(Widget base) => Stack(
+      fit: StackFit.expand,
+      children: [
+        base,
+        if (dim > 0) ColoredBox(color: VColors.black.withValues(alpha: dim)),
+      ],
+    );
+
+    if (photo == null) {
+      final palette = VWallpapers.all[w.wallpaper.builtin] ?? VWallpapers.night;
+      return _Shown(
+        'b:${w.wallpaper.builtin}:$dim',
+        null,
+        () => withDim(_Palette(palette)),
+      );
+    }
+    final blur = w.soft ? 0.0 : w.blur;
+    final image = wallpaperImage(photo, blur: blur, soft: w.soft);
+    final baked = blur > 0.01 && blurReady(photo, blur);
+    final live = blur > 0.01 && !baked;
+    Widget picture() => Image(
+      image: image,
+      fit: BoxFit.cover,
+      gaplessPlayback: true,
+      filterQuality: w.soft ? FilterQuality.high : FilterQuality.medium,
+      errorBuilder: (_, _, _) => const _Palette(VWallpapers.night),
+    );
+    return _Shown(
+      'p:$photo:${w.soft}:$blur:$baked:$dim',
+      image,
+      () => withDim(
+        live
+            ? ImageFiltered(
+                imageFilter: ui.ImageFilter.blur(
+                  sigmaX: blur * 30,
+                  sigmaY: blur * 30,
+                  tileMode: TileMode.clamp,
+                ),
+                child: picture(),
+              )
+            : picture(),
+      ),
+    );
+  }
+
+  final String key;
+  final ImageProvider? image;
+  final Widget Function() build;
 }
 
 /// Whether the blurred copy of [photo] at [blur] already exists.
