@@ -203,6 +203,12 @@ abstract final class Launcher {
   /// Opens the app that is playing.
   static Future<void> mediaOpen() => _methods.invokeMethod('mediaOpen');
 
+  /// Today's remaining events (with calendar access) and the next alarm.
+  static Future<UpNext> upNext() async {
+    final m = await _methods.invokeMapMethod<Object?, Object?>('upNext');
+    return m == null ? const UpNext([], null) : UpNext.fromMap(m);
+  }
+
   static Future<void> torch(bool on) =>
       _methods.invokeMethod('torch', {'on': on});
 

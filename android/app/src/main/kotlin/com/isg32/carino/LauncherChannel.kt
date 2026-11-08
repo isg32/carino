@@ -341,6 +341,16 @@ class LauncherChannel(
                         activity.requestPermissions(arrayOf(permission), REQUEST_PERMISSION)
                     }
                 }
+                "upNext" -> worker.execute {
+                    val events = try {
+                        todaysEvents()
+                    } catch (_: Exception) {
+                        emptyList()
+                    }
+                    val alarm = activity.getSystemService(android.app.AlarmManager::class.java)
+                        .nextAlarmClock?.triggerTime
+                    main.post { result.success(mapOf("events" to events, "alarm" to alarm)) }
+                }
                 "nextEvent" -> worker.execute {
                     val event = try {
                         nextEvent()
@@ -618,6 +628,48 @@ class LauncherChannel(
             )
         }
         return null
+    }
+
+    /** What's left of today: events that haven't ended, all-day ones first. */
+    private fun todaysEvents(): List<Map<String, Any?>> {
+        if (!granted(android.Manifest.permission.READ_CALENDAR)) return emptyList()
+        val now = System.currentTimeMillis()
+        val endOfDay = java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.HOUR_OF_DAY, 23)
+            set(java.util.Calendar.MINUTE, 59)
+            set(java.util.Calendar.SECOND, 59)
+        }.timeInMillis
+        val uri = CalendarContract.Instances.CONTENT_URI.buildUpon().also {
+            ContentUris.appendId(it, now)
+            ContentUris.appendId(it, endOfDay)
+        }.build()
+        val out = mutableListOf<Map<String, Any?>>()
+        activity.contentResolver.query(
+            uri,
+            arrayOf(
+                CalendarContract.Instances.TITLE,
+                CalendarContract.Instances.BEGIN,
+                CalendarContract.Instances.END,
+                CalendarContract.Instances.ALL_DAY,
+                CalendarContract.Instances.EVENT_LOCATION,
+            ),
+            "${CalendarContract.Instances.END} > ? AND ${CalendarContract.Instances.VISIBLE} = 1",
+            arrayOf(now.toString()),
+            "${CalendarContract.Instances.ALL_DAY} DESC, ${CalendarContract.Instances.BEGIN} ASC",
+        )?.use { c ->
+            while (c.moveToNext() && out.size < 4) {
+                out.add(
+                    mapOf(
+                        "title" to (c.getString(0) ?: ""),
+                        "begin" to c.getLong(1),
+                        "end" to c.getLong(2),
+                        "allDay" to (c.getInt(3) == 1),
+                        "location" to (c.getString(4) ?: ""),
+                    ),
+                )
+            }
+        }
+        return out
     }
 
     private fun searchContacts(query: String): List<Map<String, Any?>> {

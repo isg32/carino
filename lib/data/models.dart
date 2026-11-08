@@ -219,7 +219,7 @@ enum SearchMode { apps, essentials }
 enum GestureAction { search, notifications, customise, apps, lock, nothing }
 
 /// The built-in widgets on the Widgets tab.
-enum BuiltinWidget { media, clock, battery, calendar, notes }
+enum BuiltinWidget { media, upNext, clock, battery, calendar, notes }
 
 /// A Widgets tab entry: a built-in widget's name, or `aw:<id>` for a widget
 /// from another app, hosted by Android.
@@ -514,6 +514,48 @@ class CalendarEvent {
   final DateTime end;
 
   bool get ongoing => DateTime.now().isAfter(begin);
+}
+
+/// Today's remaining events and the next alarm, for the Up next widget.
+class UpNext {
+  const UpNext(this.events, this.alarm);
+
+  factory UpNext.fromMap(Map<Object?, Object?> m) => UpNext(
+    [
+      for (final e in (m['events'] as List<Object?>?) ?? const [])
+        UpNextEvent.fromMap(e! as Map<Object?, Object?>),
+    ],
+    m['alarm'] == null
+        ? null
+        : DateTime.fromMillisecondsSinceEpoch((m['alarm']! as num).toInt()),
+  );
+
+  final List<UpNextEvent> events;
+  final DateTime? alarm;
+}
+
+class UpNextEvent {
+  const UpNextEvent({
+    required this.title,
+    required this.begin,
+    required this.end,
+    required this.allDay,
+    required this.location,
+  });
+
+  factory UpNextEvent.fromMap(Map<Object?, Object?> m) => UpNextEvent(
+    title: m['title']! as String,
+    begin: DateTime.fromMillisecondsSinceEpoch((m['begin']! as num).toInt()),
+    end: DateTime.fromMillisecondsSinceEpoch((m['end']! as num).toInt()),
+    allDay: m['allDay']! as bool,
+    location: m['location']! as String,
+  );
+
+  final String title;
+  final DateTime begin;
+  final DateTime end;
+  final bool allDay;
+  final String location;
 }
 
 /// A person found by Search.

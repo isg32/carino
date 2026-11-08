@@ -130,6 +130,7 @@ class _Framed extends ConsumerWidget {
           padding: const EdgeInsets.all(16),
           child: switch (builtin) {
             BuiltinWidget.media => const MediaWidget(),
+            BuiltinWidget.upNext => const UpNextWidget(),
             BuiltinWidget.clock => const ClockWidget(),
             BuiltinWidget.battery => const BatteryWidget(),
             BuiltinWidget.calendar => const CalendarWidget(),
@@ -213,6 +214,7 @@ class HostedWidget extends ConsumerWidget {
 
 String widgetName(BuiltinWidget w) => switch (w) {
   BuiltinWidget.media => 'Now playing',
+  BuiltinWidget.upNext => 'Up next',
   BuiltinWidget.clock => 'Clock',
   BuiltinWidget.battery => 'Battery',
   BuiltinWidget.calendar => 'Calendar',
@@ -434,6 +436,138 @@ class _MediaWidgetState extends ConsumerState<MediaWidget> {
   }
 
   Timer? _seekTimer;
+}
+
+/// Up next: what's left of today in the calendar, and the next alarm.
+class UpNextWidget extends ConsumerWidget {
+  const UpNextWidget({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final up = ref.watch(upNextProvider).value;
+    final calendar = ref.watch(permissionProvider('calendar')).value ?? true;
+    final h24 = ref.watch(settingsProvider.select((s) => s.clock24));
+    final hm = DateFormat(h24 ? 'HH:mm' : 'h:mm');
+    final now = DateTime.now();
+
+    String length(Duration d) {
+      if (d.inMinutes < 60) return '${d.inMinutes} min';
+      final m = d.inMinutes % 60;
+      return m == 0 ? '${d.inHours} h' : '${d.inHours} h $m min';
+    }
+
+    final rows = <Widget>[];
+    final alarm = up?.alarm;
+    if (alarm != null && alarm.difference(now) < const Duration(hours: 24)) {
+      rows.add(
+        _UpNextRow(
+          time: hm.format(alarm),
+          title: 'Alarm',
+          subtitle: alarm.day == now.day ? 'Today' : 'Tomorrow',
+          onTap: () => Launcher.open('clock'),
+        ),
+      );
+    }
+    for (final e in up?.events ?? const <UpNextEvent>[]) {
+      final ongoing = !e.allDay && now.isAfter(e.begin);
+      rows.add(
+        _UpNextRow(
+          time: e.allDay ? 'DAY' : (ongoing ? 'NOW' : hm.format(e.begin)),
+          title: e.title.isEmpty ? 'Event' : e.title,
+          subtitle: e.location.isNotEmpty
+              ? e.location
+              : (e.allDay ? 'All day' : length(e.end.difference(e.begin))),
+          onTap: () => Launcher.open('calendar'),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(child: Text('UP NEXT', style: VText.eyebrow)),
+            if (!calendar)
+              VPill(
+                'Allow calendar',
+                fill: VFill.outline,
+                onTap: () => Launcher.requestPermission('calendar').then((_) {
+                  ref.invalidate(permissionProvider('calendar'));
+                  ref.invalidate(upNextProvider);
+                }),
+              ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        if (rows.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              'Nothing else today',
+              style: VText.inter(14, weight: 300),
+            ),
+          )
+        else
+          for (var i = 0; i < rows.length; i++) ...[
+            if (i > 0) const VDivider(),
+            rows[i],
+          ],
+      ],
+    );
+  }
+}
+
+class _UpNextRow extends StatelessWidget {
+  const _UpNextRow({
+    required this.time,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final String time;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return VTappable(
+      onTap: onTap,
+      child: SizedBox(
+        height: 52,
+        child: Row(
+          children: [
+            SizedBox(
+              width: 62,
+              child: Text(time, style: VText.doto(18, weight: 800, height: 1)),
+            ),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: VText.rowTitle,
+                  ),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: VText.secondary,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class ClockWidget extends ConsumerWidget {
@@ -795,6 +929,7 @@ class _AddWidgetState extends ConsumerState<_AddWidget> {
                     title: widgetName(w),
                     leading: VIconView(switch (w) {
                       BuiltinWidget.media => VIcon.music,
+                      BuiltinWidget.upNext => VIcon.calendar,
                       BuiltinWidget.clock => VIcon.clock,
                       BuiltinWidget.battery => VIcon.battery,
                       BuiltinWidget.calendar => VIcon.calendar,

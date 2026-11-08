@@ -150,8 +150,10 @@ class SettingsNotifier extends Notifier<CarinoSettings> {
         if (!s.knownWidgets.contains(w.name)) w.name,
     ];
     if (fresh.isEmpty) return s;
+    // Second, so a new widget is seen without pushing the first one down.
+    final at = s.widgets.isEmpty ? 0 : 1;
     return s.copyWith(
-      widgets: [...fresh, ...s.widgets],
+      widgets: [...s.widgets.take(at), ...fresh, ...s.widgets.skip(at)],
       knownWidgets: [...s.knownWidgets, ...fresh],
     );
   }
@@ -450,6 +452,28 @@ final mediaProvider = StreamProvider<MediaState?>((ref) async* {
     final m = e['media'] as Map<Object?, Object?>?;
     return m == null ? null : MediaState.fromMap(m);
   });
+});
+
+/// Whether calendar or contacts access is granted, checked again whenever
+/// Cariño comes back to the front (after the system dialog or Settings).
+final permissionProvider = StreamProvider.family<bool, String>((
+  ref,
+  name,
+) async* {
+  yield await Launcher.hasPermission(name);
+  yield* Launcher.events
+      .where((e) => e['type'] == 'resume')
+      .asyncMap((_) => Launcher.hasPermission(name));
+});
+
+/// Up next, refreshed each minute while Cariño is in front.
+final upNextProvider = FutureProvider<UpNext>((ref) async {
+  ref.watch(nowProvider);
+  try {
+    return await Launcher.upNext();
+  } catch (_) {
+    return const UpNext([], null);
+  }
 });
 
 /// What a hosted widget is (its app and name), for its label and menu.

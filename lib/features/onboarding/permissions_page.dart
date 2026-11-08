@@ -9,18 +9,6 @@ import '../../core/widgets/v_list.dart';
 import '../../data/providers.dart';
 import '../../platform/launcher.dart';
 
-/// Whether calendar or contacts access is granted, checked again whenever
-/// Cariño comes back to the front (after the system dialog or Settings).
-final permissionProvider = StreamProvider.family<bool, String>((
-  ref,
-  name,
-) async* {
-  yield await Launcher.hasPermission(name);
-  yield* Launcher.events
-      .where((e) => e['type'] == 'resume')
-      .asyncMap((_) => Launcher.hasPermission(name));
-});
-
 /// First run, step 2: the optional permissions, each turning on one thing.
 class PermissionsPage extends ConsumerWidget {
   const PermissionsPage({super.key});
