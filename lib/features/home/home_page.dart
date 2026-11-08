@@ -25,6 +25,7 @@ class HomePage extends ConsumerWidget {
     this.onSwipeDown,
     this.onMenu,
     this.onPickEmpty,
+    this.onSpread,
     this.preview = false,
   });
 
@@ -38,6 +39,9 @@ class HomePage extends ConsumerWidget {
   final VoidCallback? onSwipeDown;
   final SlotMenu? onMenu;
   final void Function(int slot)? onPickEmpty;
+
+  /// Two fingers spread apart on Home (the hidden apps).
+  final VoidCallback? onSpread;
 
   /// Drawn in a Customise card: no gestures, frozen clock.
   final bool preview;
@@ -92,17 +96,20 @@ class HomePage extends ConsumerWidget {
       ),
     );
     if (preview) return content;
-    return GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onLongPress: editing ? null : onLongPressEmpty,
-      onVerticalDragEnd: editing
-          ? null
-          : (d) {
-              final v = d.primaryVelocity ?? 0;
-              if (v < -250) onSwipeUp?.call();
-              if (v > 250) onSwipeDown?.call();
-            },
-      child: content,
+    return _SpreadDetector(
+      onSpread: editing ? null : onSpread,
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onLongPress: editing ? null : onLongPressEmpty,
+        onVerticalDragEnd: editing
+            ? null
+            : (d) {
+                final v = d.primaryVelocity ?? 0;
+                if (v < -250) onSwipeUp?.call();
+                if (v > 250) onSwipeDown?.call();
+              },
+        child: content,
+      ),
     );
   }
 }
@@ -174,6 +181,68 @@ class _ClockHeader extends ConsumerWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+/// Two fingers moving apart. Listens to raw pointers, so it never competes
+/// with the swipes, taps and long-presses on Home.
+class _SpreadDetector extends StatefulWidget {
+  const _SpreadDetector({required this.child, this.onSpread});
+
+  final Widget child;
+  final VoidCallback? onSpread;
+
+  @override
+  State<_SpreadDetector> createState() => _SpreadDetectorState();
+}
+
+class _SpreadDetectorState extends State<_SpreadDetector> {
+  final _points = <int, Offset>{};
+  double? _start;
+  bool _fired = false;
+
+  double get _distance {
+    final p = _points.values.toList();
+    return (p[0] - p[1]).distance;
+  }
+
+  void _down(PointerDownEvent e) {
+    _points[e.pointer] = e.position;
+    if (_points.length == 2) {
+      _start = _distance;
+      _fired = false;
+    }
+  }
+
+  void _move(PointerMoveEvent e) {
+    if (!_points.containsKey(e.pointer)) return;
+    _points[e.pointer] = e.position;
+    final start = _start;
+    if (_points.length != 2 || start == null || _fired) return;
+    final d = _distance;
+    if (d > start * 1.5 && d - start > 120) {
+      _fired = true;
+      HapticFeedback.mediumImpact();
+      widget.onSpread?.call();
+    }
+  }
+
+  void _up(PointerEvent e) {
+    _points.remove(e.pointer);
+    if (_points.length < 2) _start = null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.onSpread == null) return widget.child;
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: _down,
+      onPointerMove: _move,
+      onPointerUp: _up,
+      onPointerCancel: _up,
+      child: widget.child,
     );
   }
 }

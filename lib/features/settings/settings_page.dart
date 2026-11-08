@@ -19,6 +19,7 @@ import '../common/app_icon.dart';
 import '../common/popup.dart';
 import '../search/search_sheet.dart';
 import '../widgets/widgets_page.dart';
+import '../vault/vault.dart';
 import 'about_page.dart';
 
 void _push(BuildContext context, Widget page) =>
@@ -70,7 +71,12 @@ class SettingsPage extends ConsumerWidget {
               subtitle: s.hidden.isEmpty
                   ? 'None hidden'
                   : '${s.hidden.length} hidden',
-              onTap: () => _push(context, const HiddenAppsPage()),
+              onTap: () async {
+                // The list shows what is hidden, so it is behind the passcode
+                // too once one is set.
+                if (s.hasPasscode && !await unlockHidden(context, ref)) return;
+                if (context.mounted) _push(context, const HiddenAppsPage());
+              },
             ),
             VListRow(
               leading: const _RowIcon(VIcon.copy),
@@ -440,6 +446,30 @@ class HiddenAppsPage extends ConsumerWidget {
       children: [
         VListSection(
           children: [
+            VListRow(
+              title: 'Passcode',
+              subtitle: 'Spread two fingers on Home to open hidden apps',
+              value: s.hasPasscode ? 'Change' : 'Set',
+              onTap: () => s.hasPasscode
+                  ? changePasscode(context, ref)
+                  : unlockHidden(context, ref),
+            ),
+            if (s.hasPasscode)
+              VListRow(
+                title: 'Remove passcode',
+                chevron: false,
+                onTap: () async {
+                  final ok = await confirmDialog(
+                    context,
+                    title: 'Remove the passcode?',
+                    body: 'The next time you open hidden apps, you’ll choose a new one.',
+                    action: 'Remove passcode',
+                  );
+                  if (ok) {
+                    n.update((s) => s.copyWith(clearPasscode: true));
+                  }
+                },
+              ),
             VListRow(
               title: 'Find by full name in Search',
               subtitle: 'Typing the whole name still shows it',

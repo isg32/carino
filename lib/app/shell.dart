@@ -22,6 +22,7 @@ import '../features/menus/app_menu.dart';
 import '../features/menus/app_picker.dart';
 import '../features/search/search_sheet.dart';
 import '../features/settings/settings_page.dart';
+import '../features/vault/vault.dart';
 import '../features/widgets/widgets_page.dart';
 import '../platform/launcher.dart';
 import 'tabs.dart';
@@ -289,6 +290,7 @@ class ShellState extends ConsumerState<Shell> with TickerProviderStateMixin {
                 onSwipeDown: () => _gesture(settings.swipeDown),
                 onMenu: _menu,
                 onPickEmpty: _pickForSlot,
+                onSpread: () => openHiddenApps(context, ref),
               ),
               AppsPage(bottomClearance: m.clearance, onMenu: _menu),
               WidgetsPage(bottomClearance: m.clearance),

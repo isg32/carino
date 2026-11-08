@@ -249,6 +249,8 @@ class CarinoSettings {
     ],
     this.note = '',
     this.photos = const [],
+    this.vaultHash,
+    this.vaultSalt,
   });
 
   factory CarinoSettings.fromJson(Map<String, Object?> j) {
@@ -291,6 +293,8 @@ class CarinoSettings {
           e(BuiltinWidget.values, k, BuiltinWidget.clock),
       ],
       note: (j['note'] as String?) ?? '',
+      vaultHash: j['vaultHash'] as String?,
+      vaultSalt: j['vaultSalt'] as String?,
       photos: [
         for (final p in (j['photos'] as List<Object?>?) ?? const [])
           p! as String,
@@ -323,6 +327,12 @@ class CarinoSettings {
   /// Photos picked as wallpapers, kept for the Wallpaper sheet.
   final List<String> photos;
 
+  /// The hidden-apps passcode, salted and hashed; null when none is set.
+  final String? vaultHash;
+  final String? vaultSalt;
+
+  bool get hasPasscode => vaultHash != null && vaultSalt != null;
+
   CarinoSettings copyWith({
     bool? onboarded,
     AppsView? appsView,
@@ -344,6 +354,8 @@ class CarinoSettings {
     List<BuiltinWidget>? widgets,
     String? note,
     List<String>? photos,
+    ({String hash, String salt})? passcode,
+    bool clearPasscode = false,
   }) => CarinoSettings(
     onboarded: onboarded ?? this.onboarded,
     appsView: appsView ?? this.appsView,
@@ -365,6 +377,8 @@ class CarinoSettings {
     widgets: widgets ?? this.widgets,
     note: note ?? this.note,
     photos: photos ?? this.photos,
+    vaultHash: clearPasscode ? null : (passcode?.hash ?? vaultHash),
+    vaultSalt: clearPasscode ? null : (passcode?.salt ?? vaultSalt),
   );
 
   Map<String, Object?> toJson() => {
@@ -388,6 +402,8 @@ class CarinoSettings {
     'widgets': [for (final w in widgets) w.name],
     'note': note,
     'photos': photos,
+    'vaultHash': vaultHash,
+    'vaultSalt': vaultSalt,
   };
 }
 
