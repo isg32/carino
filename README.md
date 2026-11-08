@@ -6,7 +6,7 @@
 
 **A quiet Android home screen. Black and white, with your wallpaper as the only colour.**
 
-![Version](https://img.shields.io/badge/version-1.2.1-000000?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.3.0-000000?style=flat-square)
 ![Release](https://img.shields.io/github/v/release/isg32/carino?style=flat-square&color=000000&label=release)
 ![Flutter](https://img.shields.io/badge/Flutter-3.47-000000?style=flat-square&logo=flutter&logoColor=white)
 ![Platform](https://img.shields.io/badge/platform-Android-000000?style=flat-square&logo=android&logoColor=white)
@@ -52,7 +52,7 @@ Cariño's design language is Veronica's, carried over from [Idris](https://githu
 | **Apps** | Every app A–Z as a list or a grid, a letter scrubber with haptics, "New" badges and a Work section. Long-press any app for its shortcuts, Add to Home, Hide, Uninstall and App info. |
 | **Notification dots** | A single ink dot on apps with notifications, counted the way Launcher3 does: only apps that allow dots, never ongoing ones. |
 | **Search** | One field, two modes: your apps, people, system settings ("wifi", "battery") and the web; or your Essentials, quick toggles and tools you choose and order. Swipe down to close. |
-| **Widgets** | Cariño's own Clock, Battery, Calendar and Notes widgets, and widgets from your other apps in their own colours inside a dashed frame. Add, resize, configure, reorder, remove. |
+| **Widgets** | Cariño's own Now playing (any app's music, with progress, pause and next), Clock, Battery, Calendar and Notes widgets, and widgets from your other apps in their own colours inside a dashed frame. Add, resize, configure, reorder, remove. |
 | **Customise** | Long-press Home and it zooms out into its own card. Keep several layouts, each with its own wallpaper (built-in, or your photos with dim and blur), ink, glass strength, mono or coloured icons, frosted icon backgrounds, columns and favourite rows. |
 | **Hidden apps** | Hide any app. Spread two fingers on Home and enter your passcode to open them as a folder. |
 | **Wallpaper** | Changes the moment you choose it and cross-fades in. Android's own wallpaper follows the layout as a soft blurred copy, so Recents and app transitions match. |

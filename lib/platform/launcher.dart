@@ -187,6 +187,22 @@ abstract final class Launcher {
       await _methods.invokeMethod<bool>('openSetting', {'action': action}) ??
       false;
 
+  /// What's playing, or null (nothing, or no notification access).
+  static Future<MediaState?> media() async {
+    final m = await _methods.invokeMapMethod<Object?, Object?>('media');
+    return m == null ? null : MediaState.fromMap(m);
+  }
+
+  /// play, pause, next, previous, or seek (with [position]).
+  static Future<void> mediaAction(String action, {Duration? position}) =>
+      _methods.invokeMethod('mediaAction', {
+        'action': action,
+        'position': position?.inMilliseconds,
+      });
+
+  /// Opens the app that is playing.
+  static Future<void> mediaOpen() => _methods.invokeMethod('mediaOpen');
+
   static Future<void> torch(bool on) =>
       _methods.invokeMethod('torch', {'on': on});
 

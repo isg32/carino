@@ -219,7 +219,7 @@ enum SearchMode { apps, essentials }
 enum GestureAction { search, notifications, customise, apps, lock, nothing }
 
 /// The built-in widgets on the Widgets tab.
-enum BuiltinWidget { clock, battery, calendar, notes }
+enum BuiltinWidget { media, clock, battery, calendar, notes }
 
 /// A Widgets tab entry: a built-in widget's name, or `aw:<id>` for a widget
 /// from another app, hosted by Android.
@@ -266,7 +266,14 @@ class CarinoSettings {
       'alarm',
       'camera',
     ],
-    this.widgets = const ['clock', 'battery', 'calendar', 'notes'],
+    this.widgets = const ['media', 'clock', 'battery', 'calendar', 'notes'],
+    this.knownWidgets = const [
+      'media',
+      'clock',
+      'battery',
+      'calendar',
+      'notes',
+    ],
     this.widgetRows = const {},
     this.note = '',
     this.photos = const [],
@@ -316,6 +323,12 @@ class CarinoSettings {
         for (final k in (j['widgets'] as List<Object?>?) ?? d.widgets)
           k! as String,
       ],
+      knownWidgets: [
+        for (final k
+            in (j['knownWidgets'] as List<Object?>?) ??
+                const ['clock', 'battery', 'calendar', 'notes'])
+          k! as String,
+      ],
       widgetRows: {
         for (final e
             in ((j['widgetRows'] as Map<Object?, Object?>?) ?? const {})
@@ -357,6 +370,10 @@ class CarinoSettings {
 
   /// The Widgets tab, in order (see [WidgetKey]).
   final List<String> widgets;
+
+  /// Built-in widgets this person has been offered; one added in a later
+  /// version shows up once, and stays away if removed.
+  final List<String> knownWidgets;
 
   /// Height of each hosted widget, in rows (1–4).
   final Map<String, int> widgetRows;
@@ -406,6 +423,7 @@ class CarinoSettings {
     List<String>? essentials,
     List<String>? widgets,
     Map<String, int>? widgetRows,
+    List<String>? knownWidgets,
     String? note,
     List<String>? photos,
     bool? dots,
@@ -435,6 +453,7 @@ class CarinoSettings {
     essentials: essentials ?? this.essentials,
     widgets: widgets ?? this.widgets,
     widgetRows: widgetRows ?? this.widgetRows,
+    knownWidgets: knownWidgets ?? this.knownWidgets,
     note: note ?? this.note,
     photos: photos ?? this.photos,
     dots: dots ?? this.dots,
@@ -466,6 +485,7 @@ class CarinoSettings {
     'essentials': essentials,
     'widgets': widgets,
     'widgetRows': widgetRows,
+    'knownWidgets': knownWidgets,
     'note': note,
     'photos': photos,
     'dots': dots,
@@ -503,4 +523,50 @@ class ContactHit {
   final int id;
   final String lookup;
   final String name;
+}
+
+/// What's playing, from the active media session.
+class MediaState {
+  const MediaState({
+    required this.package,
+    required this.app,
+    required this.title,
+    required this.artist,
+    required this.duration,
+    required this.position,
+    required this.playing,
+    required this.canSeek,
+    required this.at,
+  });
+
+  factory MediaState.fromMap(Map<Object?, Object?> m) => MediaState(
+    package: m['package']! as String,
+    app: m['app']! as String,
+    title: m['title']! as String,
+    artist: m['artist']! as String,
+    duration: Duration(milliseconds: (m['duration']! as num).toInt()),
+    position: Duration(milliseconds: (m['position']! as num).toInt()),
+    playing: m['playing']! as bool,
+    canSeek: m['canSeek']! as bool,
+    at: DateTime.now(),
+  );
+
+  final String package;
+  final String app;
+  final String title;
+  final String artist;
+  final Duration duration;
+
+  /// Position when this was reported, at [at].
+  final Duration position;
+  final bool playing;
+  final bool canSeek;
+  final DateTime at;
+
+  /// Where playback is now, moving on from [position] while playing.
+  Duration positionAt(DateTime now) {
+    if (!playing) return position;
+    final p = position + now.difference(at);
+    return duration > Duration.zero && p > duration ? duration : p;
+  }
 }

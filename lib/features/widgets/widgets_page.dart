@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -127,6 +129,7 @@ class _Framed extends ConsumerWidget {
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: switch (builtin) {
+            BuiltinWidget.media => const MediaWidget(),
             BuiltinWidget.clock => const ClockWidget(),
             BuiltinWidget.battery => const BatteryWidget(),
             BuiltinWidget.calendar => const CalendarWidget(),
@@ -209,11 +212,229 @@ class HostedWidget extends ConsumerWidget {
 }
 
 String widgetName(BuiltinWidget w) => switch (w) {
+  BuiltinWidget.media => 'Now playing',
   BuiltinWidget.clock => 'Clock',
   BuiltinWidget.battery => 'Battery',
   BuiltinWidget.calendar => 'Calendar',
   BuiltinWidget.notes => 'Notes',
 };
+
+/// Now playing: whatever any app is playing, with its progress, pause and
+/// next. Reads the active media session, which needs notification access.
+class MediaWidget extends ConsumerStatefulWidget {
+  const MediaWidget({super.key});
+
+  @override
+  ConsumerState<MediaWidget> createState() => _MediaWidgetState();
+}
+
+class _MediaWidgetState extends ConsumerState<MediaWidget> {
+  Timer? _tick;
+  double? _seeking;
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
+
+  /// The elapsed time only moves while something is playing.
+  void _ticking(bool on) {
+    if (on && _tick == null) {
+      _tick = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) setState(() {});
+      });
+    } else if (!on) {
+      _tick?.cancel();
+      _tick = null;
+    }
+  }
+
+  String _time(Duration d) {
+    final m = d.inMinutes;
+    final s = d.inSeconds % 60;
+    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final access = ref.watch(notificationAccessProvider).value ?? false;
+    final media = ref.watch(mediaProvider).value;
+    final ink = VInk.of(context);
+    final paper = VInk.surfaceOf(context);
+    _ticking(media?.playing ?? false);
+
+    if (!access || media == null) {
+      return Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: ink),
+            ),
+            child: const VIconView(VIcon.music, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('NOW PLAYING', style: VText.eyebrow),
+                const SizedBox(height: 4),
+                Text(
+                  access ? 'Nothing' : 'See what’s playing in any app',
+                  style: VText.inter(14, weight: 300),
+                ),
+              ],
+            ),
+          ),
+          if (!access)
+            const VPill(
+              'Allow',
+              fill: VFill.outline,
+              onTap: Launcher.requestNotificationAccess,
+            ),
+        ],
+      );
+    }
+
+    final now = DateTime.now();
+    final position = media.positionAt(now);
+    final total = media.duration;
+    final progress =
+        _seeking ??
+        (total > Duration.zero
+            ? (position.inMilliseconds / total.inMilliseconds).clamp(0.0, 1.0)
+            : 0.0);
+    final subtitle = [
+      if (media.artist.isNotEmpty) media.artist,
+      if (media.app.isNotEmpty) media.app,
+    ].join(' · ');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        GestureDetector(
+          onTap: Launcher.mediaOpen,
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: ink),
+                ),
+                child: const VIconView(VIcon.music, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      media.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: VText.rowTitle,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: VText.secondary,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                _time(position),
+                style: VText.doto(20, weight: 800, height: 1),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, box) => IgnorePointer(
+                  ignoring: !media.canSeek || total == Duration.zero,
+                  child: CarinoSlider(
+                    width: box.maxWidth,
+                    value: progress,
+                    onChanged: (v) {
+                      setState(() => _seeking = v);
+                      // Seek once the finger settles.
+                      _seekTimer?.cancel();
+                      _seekTimer = Timer(const Duration(milliseconds: 250), () {
+                        Launcher.mediaAction('seek', position: total * v);
+                        if (mounted) setState(() => _seeking = null);
+                      });
+                    },
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Semantics(
+              button: true,
+              label: media.playing ? 'Pause' : 'Play',
+              child: GestureDetector(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  Launcher.mediaAction(media.playing ? 'pause' : 'play');
+                },
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(color: ink, shape: BoxShape.circle),
+                  child: VIconView(
+                    media.playing ? VIcon.pause : VIcon.play,
+                    size: 16,
+                    strokeWidth: 2.25,
+                    color: paper,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Semantics(
+              button: true,
+              label: 'Next',
+              child: GestureDetector(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  Launcher.mediaAction('next');
+                },
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: ink),
+                  ),
+                  child: const VIconView(VIcon.next, size: 16),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Timer? _seekTimer;
+}
 
 class ClockWidget extends ConsumerWidget {
   const ClockWidget({super.key});
@@ -573,6 +794,7 @@ class _AddWidgetState extends ConsumerState<_AddWidget> {
                   VListRow(
                     title: widgetName(w),
                     leading: VIconView(switch (w) {
+                      BuiltinWidget.media => VIcon.music,
                       BuiltinWidget.clock => VIcon.clock,
                       BuiltinWidget.battery => VIcon.battery,
                       BuiltinWidget.calendar => VIcon.calendar,

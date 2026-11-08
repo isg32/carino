@@ -96,6 +96,10 @@ enum VIcon {
   downArrow('M12 5v14M6 13l6 6l6-6'),
   swipeUp('M6 15l6-6l6 6'),
   home2('M3.5 10.5L12 3.5l8.5 7v10h-6v-6h-5v6h-6z'),
+  music(
+    'M9 18V5.5l11-2V16M6 18a3 3 0 1 0 6 0a3 3 0 1 0-6 0M14 16a3 3 0 1 0 6 0'
+    'a3 3 0 1 0-6 0',
+  ),
   plus('M12 5v14M5 12h14'),
   minus('M5 12h14'),
   chevron('M9 6l6 6l-6 6'),

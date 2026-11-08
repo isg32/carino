@@ -132,12 +132,28 @@ class SettingsNotifier extends Notifier<CarinoSettings> {
     final raw = ref.read(prefsProvider).getString(_key);
     if (raw == null) return const CarinoSettings();
     try {
-      return CarinoSettings.fromJson(
-        (jsonDecode(raw) as Map<Object?, Object?>).cast<String, Object?>(),
+      return _offerNewWidgets(
+        CarinoSettings.fromJson(
+          (jsonDecode(raw) as Map<Object?, Object?>).cast<String, Object?>(),
+        ),
       );
     } catch (_) {
       return const CarinoSettings();
     }
+  }
+
+  /// A built-in widget added in a newer version joins the top of the
+  /// Widgets tab once; if it's removed later it isn't offered again.
+  CarinoSettings _offerNewWidgets(CarinoSettings s) {
+    final fresh = [
+      for (final w in BuiltinWidget.values)
+        if (!s.knownWidgets.contains(w.name)) w.name,
+    ];
+    if (fresh.isEmpty) return s;
+    return s.copyWith(
+      widgets: [...fresh, ...s.widgets],
+      knownWidgets: [...s.knownWidgets, ...fresh],
+    );
   }
 
   void update(CarinoSettings Function(CarinoSettings s) change) {
@@ -425,6 +441,15 @@ final lockAccessProvider = StreamProvider<bool>((ref) async* {
   yield* Launcher.events
       .where((e) => e['type'] == 'resume')
       .map((e) => (e['lockAccess'] as bool?) ?? false);
+});
+
+/// What's playing, for the Now playing widget.
+final mediaProvider = StreamProvider<MediaState?>((ref) async* {
+  yield await Launcher.media();
+  yield* Launcher.events.where((e) => e['type'] == 'media').map((e) {
+    final m = e['media'] as Map<Object?, Object?>?;
+    return m == null ? null : MediaState.fromMap(m);
+  });
 });
 
 /// What a hosted widget is (its app and name), for its label and menu.

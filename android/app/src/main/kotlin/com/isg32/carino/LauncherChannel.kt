@@ -74,12 +74,15 @@ class LauncherChannel(
     private var pendingPermission: MethodChannel.Result? = null
     private var torchOn = false
 
+    private val media = CarinoMedia(activity) { emit(it) }
+
     // Battery updates arrive often; listen only while Cariño is on screen.
     private var resumed = false
     private var batteryRegistered = false
 
     fun dispose() {
         CarinoNotifications.onChange = null
+        media.stop()
         methods.setMethodCallHandler(null)
         events.setStreamHandler(null)
         launcherApps.unregisterCallback(packageCallback)
@@ -96,6 +99,7 @@ class LauncherChannel(
     fun onResume() {
         resumed = true
         startBattery()
+        media.start()
         emit(
             mapOf(
                 "type" to "resume",
@@ -109,6 +113,7 @@ class LauncherChannel(
     fun onPause() {
         resumed = false
         stopBattery()
+        media.stop()
     }
 
     private fun startBattery() {
@@ -316,6 +321,15 @@ class LauncherChannel(
                 }
                 "torchState" -> result.success(torchOn)
                 "dots" -> result.success(CarinoNotifications.counts)
+                "media" -> result.success(media.snapshot())
+                "mediaAction" -> {
+                    media.action(call.argument<String>("action")!!, call.argument<Number>("position")?.toLong())
+                    result.success(null)
+                }
+                "mediaOpen" -> {
+                    media.open()
+                    result.success(null)
+                }
                 "hasPermission" -> result.success(granted(permissionFor(call.argument<String>("name")!!)))
                 "requestPermission" -> {
                     val permission = permissionFor(call.argument<String>("name")!!)
