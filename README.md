@@ -6,7 +6,7 @@
 
 **A quiet Android home screen. Black and white, with your wallpaper as the only colour.**
 
-![Version](https://img.shields.io/badge/version-1.1.0-000000?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.2.0-000000?style=flat-square)
 ![Release](https://img.shields.io/github/v/release/isg32/carino?style=flat-square&color=000000&label=release)
 ![Flutter](https://img.shields.io/badge/Flutter-3.47-000000?style=flat-square&logo=flutter&logoColor=white)
 ![Platform](https://img.shields.io/badge/platform-Android-000000?style=flat-square&logo=android&logoColor=white)
@@ -52,11 +52,12 @@ Cariño's design language is Veronica's, carried over from [Idris](https://githu
 | **Apps** | Every app A–Z as a list or a grid, a letter scrubber with haptics, "New" badges and a Work section. Long-press any app for its shortcuts, Add to Home, Hide, Uninstall and App info. |
 | **Notification dots** | A single ink dot on apps with notifications, counted the way Launcher3 does: only apps that allow dots, never ongoing ones. |
 | **Search** | One field, two modes: your apps, people, system settings ("wifi", "battery") and the web; or your Essentials, quick toggles and tools you choose and order. Swipe down to close. |
-| **Widgets** | Cariño's own Clock, Battery, Calendar and Notes widgets; add, reorder, remove. |
+| **Widgets** | Cariño's own Clock, Battery, Calendar and Notes widgets, and widgets from your other apps in their own colours inside a dashed frame. Add, resize, configure, reorder, remove. |
 | **Customise** | Long-press Home and it zooms out into its own card. Keep several layouts, each with its own wallpaper (built-in, or your photos with dim and blur), ink, glass strength, mono or coloured icons, frosted icon backgrounds, columns and favourite rows. |
 | **Hidden apps** | Hide any app. Spread two fingers on Home and enter your passcode to open them as a folder. |
 | **Wallpaper** | Changes the moment you choose it and cross-fades in. Android's own wallpaper follows the layout as a soft blurred copy, so Recents and app transitions match. |
 | **Opening apps** | Apps slide in from the right while Cariño blurs behind them, and un-blur when you come back. |
+| **First run** | Set Cariño as your home app, then a single page of optional permissions, each turning on one thing. |
 | **Settings** | Gestures, clock and glance line, Apps and Search options, web search engine, hidden apps and passcode, backup, reset, About. |
 
 ---
@@ -81,7 +82,7 @@ Cariño's design language is Veronica's, carried over from [Idris](https://githu
   <img src="docs/screenshots/settings.png" alt="Settings, Home and gestures, Apps and search, and the welcome screen" width="80%">
 </p>
 
-These are renders of the design, made in Claude Design. A few things drawn there are still on the [roadmap](#roadmap): weather, the "Up next" widget and widgets from other apps.
+These are renders of the design, made in Claude Design. A few things drawn there are still on the [roadmap](#roadmap): weather and the "Up next" widget.
 
 ---
 
@@ -105,11 +106,13 @@ flowchart TB
         channel["LauncherChannel: apps, icons, launching, shortcuts, wallpaper, permissions"]
         dots["CarinoNotifications: notification dots"]
         lock["CarinoLock: double-tap to lock"]
+        hosted["CarinoWidgets: widgets from other apps"]
     end
     shell --> pages --> providers --> prefs
     providers -- "carino/launcher, carino/events" --> channel
     channel --> dots
     channel --> lock
+    pages -- "carino/widgets, platform view" --> hosted
 ```
 
 **Presentation.** One shell holds the three tabs in a page view with the pill and dock over them. Customise sits behind the shell: long-pressing Home scales the whole scene into its card in the layouts carousel, with a blur riding the motion. Every popup goes through one route that blurs what is behind it.
@@ -125,6 +128,7 @@ flowchart TB
 Checked by tests on every run:
 
 - **Two colours.** A colour may only be created in `lib/core/theme/v_colors.dart` (the built-in wallpapers live there too), and importing Material fails the build.
+- **The shown version matches `pubspec.yaml`.**
 
 ---
 
@@ -146,17 +150,18 @@ carino/
 │   │   ├── menus/                App menu, app picker
 │   │   ├── vault/                Hidden apps and the passcode
 │   │   ├── settings/             Settings pages and About
-│   │   ├── onboarding/           Welcome and the boot loading screen
+│   │   ├── onboarding/           Welcome, permissions and the boot loading screen
 │   │   └── common/               Wallpaper, app icons, popups, the loader
 │   └── platform/launcher.dart    The Dart side of the native layer
 ├── android/app/src/main/kotlin/com/isg32/carino/
 │   ├── MainActivity.kt           The home activity
 │   ├── LauncherChannel.kt        Everything Cariño asks of Android
 │   ├── CarinoNotifications.kt    Notification dots
-│   └── CarinoLock.kt             Double-tap to lock
+│   ├── CarinoLock.kt             Double-tap to lock
+│   └── CarinoWidgets.kt          Widgets from other apps
 ├── assets/                       Fonts (OFL), the app icon sources, the About photo
 ├── docs/screenshots/             README images, rendered from the design
-└── test/                         The colour rule
+└── test/                         The colour rule and the version check
 ```
 
 ---
@@ -208,9 +213,8 @@ Signed APKs are attached to every [release](https://github.com/isg32/carino/rele
 
 ## Roadmap
 
-- Widgets from other apps on the Widgets tab
-- A permissions step in first run
 - Weather on Home (would need the network, so it will be opt-in)
+- An "Up next" widget: today's events and alarms
 
 ---
 

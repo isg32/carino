@@ -193,7 +193,9 @@ class HostedWidget extends ConsumerWidget {
                       creationParamsCodec: const StandardMessageCodec(),
                       // Taps reach the widget; a long-press stays Cariño's.
                       gestureRecognizers: {
-                        const Factory<TapGestureRecognizer>(TapGestureRecognizer.new),
+                        const Factory<TapGestureRecognizer>(
+                          TapGestureRecognizer.new,
+                        ),
                       },
                     ),
                   ),

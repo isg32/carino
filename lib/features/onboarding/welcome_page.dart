@@ -1,4 +1,4 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/icons/v_icons.dart';
@@ -9,8 +9,9 @@ import '../../core/widgets/v_list.dart';
 import '../../data/providers.dart';
 import '../../platform/launcher.dart';
 import '../common/wallpaper.dart';
+import 'permissions_page.dart';
 
-/// First launch: what Cariño is, and one primary action.
+/// First launch, step 1: what Cariño is, and one primary action.
 class WelcomePage extends ConsumerWidget {
   const WelcomePage({super.key});
 
@@ -18,9 +19,10 @@ class WelcomePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final layout = ref.watch(activeLayoutProvider);
     final pad = MediaQuery.paddingOf(context);
-    void done() => ref
-        .read(settingsProvider.notifier)
-        .update((s) => s.copyWith(onboarded: true));
+    // Step 2: the optional permissions.
+    void next() => Navigator.of(
+      context,
+    ).push(CupertinoPageRoute<void>(builder: (_) => const PermissionsPage()));
 
     return Stack(
       fit: StackFit.expand,
@@ -64,11 +66,11 @@ class WelcomePage extends ConsumerWidget {
                 'Set as home app',
                 onPressed: () async {
                   await Launcher.requestDefaultHome();
-                  done();
+                  next();
                 },
               ),
               const SizedBox(height: 10),
-              VButton.ghost('Look around first', onPressed: done),
+              VButton.ghost('Look around first', onPressed: next),
             ],
           ),
         ),
