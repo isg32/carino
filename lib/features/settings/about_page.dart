@@ -106,7 +106,7 @@ class AboutPage extends StatelessWidget {
           ],
         ),
         const VFootnote(
-          "'No One noticed' & 'Sienna' are my favourites, but 'Cariño' suits as the name!"
+          "'No One noticed' & 'Sienna' are my favourites, but 'Cariño' suits as the name! "
           "Listen to The Marias, it'll change or ruin your life.",
         ),
       ],
