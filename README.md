@@ -70,3 +70,11 @@ Then press Home and choose Cariño, or use Settings › Backup & about › Defau
 ## Contributing
 
 Issues and pull requests are welcome. Keep each commit to one change, with a message that says why, and make sure `flutter analyze` and `flutter test` pass.
+
+## License
+
+Copyright (C) 2026 Sapan Gajjar
+
+Cariño is free software: you can redistribute it and/or modify it under the terms of the [GNU General Public License v3.0](LICENSE) as published by the Free Software Foundation. It is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+Bundled fonts keep their own licences: Doto and Inter under the SIL Open Font License ([`assets/fonts/`](assets/fonts/)).
