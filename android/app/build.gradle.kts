@@ -4,6 +4,17 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Release signing: set by build_signed.sh (from .env) or the release
+// workflow (from secrets), never committed. Without them, release builds
+// fall back to the debug key, so `flutter build apk --release` still works
+// with no setup.
+val releaseStoreFile = System.getenv("CARINO_KEYSTORE_FILE")?.let { file(it) }
+val releaseStorePassword = System.getenv("CARINO_KEYSTORE_PASSWORD")?.takeIf { it.isNotEmpty() }
+val releaseKeyPassword =
+    System.getenv("CARINO_KEY_PASSWORD")?.takeIf { it.isNotEmpty() } ?: releaseStorePassword
+val releaseKeyAlias = System.getenv("CARINO_KEY_ALIAS")?.takeIf { it.isNotEmpty() } ?: "upload"
+val canSignRelease = releaseStorePassword != null && releaseStoreFile?.exists() == true
+
 android {
     namespace = "com.isg32.carino"
     compileSdk = flutter.compileSdkVersion
@@ -15,7 +26,6 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.isg32.carino"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
@@ -29,11 +39,22 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("release") {
+            keyAlias = releaseKeyAlias
+            keyPassword = releaseKeyPassword
+            storeFile = releaseStoreFile
+            storePassword = releaseStorePassword
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (canSignRelease) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }

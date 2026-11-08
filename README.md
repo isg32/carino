@@ -59,6 +59,15 @@ flutter run --release        # with a phone connected over USB debugging
 
 Then press Home and choose Cariño, or use Settings › Backup & about › Default home app.
 
+### Signed releases
+
+Release APKs are signed with a key that never enters the repository.
+
+- **Locally:** copy `.env.example` to `.env` (gitignored). Put the keystore in it base64-encoded (`base64 -w0 release-key.jks`) with its passwords, then run `./build_signed.sh`. The keystore is decoded to a temporary file for the build and deleted afterwards.
+- **On GitHub:** every push to `main` runs `.github/workflows/release.yml`. It tests, builds and signs one APK per ABI and publishes them as a release tagged `v<version>-<short sha>`. Set `CARINO_KEYSTORE_BASE64`, `CARINO_KEYSTORE_PASSWORD`, `CARINO_KEY_PASSWORD` and, optionally, `CARINO_KEY_ALIAS` as secrets in a `deployment` environment.
+
+Without these, release builds fall back to the debug key. For most phones, install `app-arm64-v8a-release.apk`.
+
 ## Roadmap
 
 - Android widgets from other apps on the Widgets tab
