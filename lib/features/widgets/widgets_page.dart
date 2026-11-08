@@ -1,0 +1,448 @@
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+
+import '../../core/icons/v_icons.dart';
+import '../../core/theme/v_palette.dart';
+import '../../core/theme/v_text.dart';
+import '../../core/widgets/v_buttons.dart';
+import '../../core/widgets/v_ink.dart';
+import '../../core/widgets/v_list.dart';
+import '../../core/widgets/v_surface.dart';
+import '../../data/models.dart';
+import '../../data/providers.dart';
+import '../../platform/launcher.dart';
+import '../common/popup.dart';
+
+/// The Widgets tab: Cariño's own widgets, in the order you set.
+class WidgetsPage extends ConsumerWidget {
+  const WidgetsPage({super.key, required this.bottomClearance});
+
+  final double bottomClearance;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final widgets = ref.watch(settingsProvider.select((s) => s.widgets));
+    final top = MediaQuery.paddingOf(context).top;
+    return ListView(
+      padding: EdgeInsets.fromLTRB(16, top + 24, 16, bottomClearance + 20),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 0, 4, 22),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${widgets.length} ${widgets.length == 1 ? 'WIDGET' : 'WIDGETS'}',
+                      style: VText.eyebrow,
+                    ),
+                    const SizedBox(height: 6),
+                    Text('Widgets', style: VText.title),
+                  ],
+                ),
+              ),
+              VPill(
+                'Add',
+                fill: VFill.outline,
+                leading: const VIconView(
+                  VIcon.plus,
+                  size: 14,
+                  strokeWidth: 1.8,
+                ),
+                onTap: () => showAddWidget(context),
+              ),
+            ],
+          ),
+        ),
+        if (widgets.isEmpty)
+          VCard(
+            outline: VOutline.dashed,
+            onTap: () => showAddWidget(context),
+            child: SizedBox(
+              height: 120,
+              child: Center(
+                child: Text(
+                  'Add your first widget',
+                  style: VText.inter(15, weight: 500),
+                ),
+              ),
+            ),
+          ),
+        for (var i = 0; i < widgets.length; i++) ...[
+          if (i > 0) const SizedBox(height: 12),
+          _Framed(widget: widgets[i], index: i),
+        ],
+      ],
+    );
+  }
+}
+
+/// A widget card; long-press for its menu.
+class _Framed extends ConsumerWidget {
+  const _Framed({required this.widget, required this.index});
+
+  final BuiltinWidget widget;
+  final int index;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return GestureDetector(
+      onLongPress: () {
+        HapticFeedback.mediumImpact();
+        showBlurPopup<void>(
+          context,
+          (_) => _WidgetMenu(index: index),
+          sheet: true,
+        );
+      },
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: VPalette.of(context).glassCard,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: VInk.of(context)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: switch (widget) {
+            BuiltinWidget.clock => const ClockWidget(),
+            BuiltinWidget.battery => const BatteryWidget(),
+            BuiltinWidget.calendar => const CalendarWidget(),
+            BuiltinWidget.notes => const NotesWidget(),
+          },
+        ),
+      ),
+    );
+  }
+}
+
+String widgetName(BuiltinWidget w) => switch (w) {
+  BuiltinWidget.clock => 'Clock',
+  BuiltinWidget.battery => 'Battery',
+  BuiltinWidget.calendar => 'Calendar',
+  BuiltinWidget.notes => 'Notes',
+};
+
+class ClockWidget extends ConsumerWidget {
+  const ClockWidget({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final now = ref.watch(nowProvider).value ?? DateTime.now();
+    final h24 = ref.watch(settingsProvider.select((s) => s.clock24));
+    return GestureDetector(
+      onTap: () => Launcher.open('clock'),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('CLOCK', style: VText.eyebrow),
+                const SizedBox(height: 10),
+                Text(
+                  DateFormat(h24 ? 'HH:mm' : 'h:mm').format(now),
+                  style: VText.doto(56, weight: 800, height: 1),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            DateFormat('EEE d').format(now).toUpperCase(),
+            style: VText.eyebrow,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class BatteryWidget extends ConsumerWidget {
+  const BatteryWidget({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final b = ref.watch(batteryProvider).value;
+    final level = b?.level ?? 0;
+    final ink = VInk.of(context);
+    final cells = (level / 10).round();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(child: Text('BATTERY', style: VText.eyebrow)),
+            if (b?.charging ?? false) Text('Charging', style: VText.secondary),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Text(
+          b == null ? '—' : '$level%',
+          style: VText.doto(46, weight: 800, height: 1),
+        ),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            for (var i = 0; i < 10; i++) ...[
+              if (i > 0) const SizedBox(width: 4),
+              Expanded(
+                child: Container(
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: i < cells ? ink : null,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: ink),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class CalendarWidget extends ConsumerWidget {
+  const CalendarWidget({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final now = DateTime.now();
+    final first = DateTime(now.year, now.month);
+    final days = DateTime(now.year, now.month + 1, 0).day;
+    final lead = (first.weekday + 6) % 7; // Monday first
+    final ink = VInk.of(context);
+    final paper = VInk.surfaceOf(context);
+    final cells = <int?>[
+      for (var i = 0; i < lead; i++) null,
+      for (var d = 1; d <= days; d++) d,
+    ];
+    while (cells.length % 7 != 0) {
+      cells.add(null);
+    }
+    return GestureDetector(
+      onTap: () => Launcher.open('calendar'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            DateFormat('MMMM yyyy').format(now).toUpperCase(),
+            style: VText.eyebrow,
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              for (final d in const ['M', 'T', 'W', 'T', 'F', 'S', 'S'])
+                Expanded(
+                  child: Center(
+                    child: Text(d, style: VText.inter(11, weight: 500)),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          for (var w = 0; w < cells.length ~/ 7; w++)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Row(
+                children: [
+                  for (final d in cells.sublist(w * 7, w * 7 + 7))
+                    Expanded(
+                      child: Center(
+                        child: Container(
+                          width: 30,
+                          height: 30,
+                          alignment: Alignment.center,
+                          decoration: d == now.day
+                              ? BoxDecoration(
+                                  color: ink,
+                                  shape: BoxShape.circle,
+                                )
+                              : null,
+                          child: Text(
+                            d?.toString() ?? '',
+                            style: VText.doto(
+                              15,
+                              weight: 700,
+                            ).copyWith(color: d == now.day ? paper : ink),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class NotesWidget extends ConsumerStatefulWidget {
+  const NotesWidget({super.key});
+
+  @override
+  ConsumerState<NotesWidget> createState() => _NotesWidgetState();
+}
+
+class _NotesWidgetState extends ConsumerState<NotesWidget> {
+  late final _text = TextEditingController(
+    text: ref.read(settingsProvider).note,
+  );
+
+  @override
+  void dispose() {
+    _text.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ink = VInk.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('NOTES', style: VText.eyebrow),
+        const SizedBox(height: 6),
+        CupertinoTextField(
+          controller: _text,
+          maxLines: 6,
+          minLines: 3,
+          padding: EdgeInsets.zero,
+          placeholder: 'Write something to keep on hand',
+          placeholderStyle: VText.inter(
+            15,
+            weight: 300,
+          ).copyWith(color: ink.withValues(alpha: 0.6)),
+          style: VText.inter(15, height: 1.5).copyWith(color: ink),
+          cursorColor: ink,
+          decoration: null,
+          onChanged: (v) => ref
+              .read(settingsProvider.notifier)
+              .update((s) => s.copyWith(note: v)),
+        ),
+      ],
+    );
+  }
+}
+
+/// Long-press a widget: move it, or remove it.
+class _WidgetMenu extends ConsumerWidget {
+  const _WidgetMenu({required this.index});
+
+  final int index;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final widgets = ref.watch(settingsProvider.select((s) => s.widgets));
+    if (index >= widgets.length) return const SizedBox.shrink();
+    final w = widgets[index];
+    final n = ref.read(settingsProvider.notifier);
+    void move(int by) {
+      final list = [...widgets];
+      final to = (index + by).clamp(0, list.length - 1);
+      list.insert(to, list.removeAt(index));
+      n.update((s) => s.copyWith(widgets: list));
+      Navigator.of(context).pop();
+    }
+
+    return CarinoSheet(
+      eyebrow: 'Widget',
+      title: widgetName(w),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          VListSection(
+            children: [
+              if (index > 0)
+                VListRow(
+                  title: 'Move up',
+                  leading: const VIconView(VIcon.up, size: 18),
+                  chevron: false,
+                  onTap: () => move(-1),
+                ),
+              if (index < widgets.length - 1)
+                VListRow(
+                  title: 'Move down',
+                  leading: const VIconView(VIcon.downArrow, size: 18),
+                  chevron: false,
+                  onTap: () => move(1),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          VButton.primary(
+            'Remove widget',
+            onPressed: () {
+              n.update(
+                (s) => s.copyWith(widgets: [...widgets]..removeAt(index)),
+              );
+              Navigator.of(context).pop();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Widgets › Add.
+Future<void> showAddWidget(BuildContext context) =>
+    showBlurPopup<void>(context, (_) => const _AddWidget(), sheet: true);
+
+class _AddWidget extends ConsumerWidget {
+  const _AddWidget();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final have = ref.watch(settingsProvider.select((s) => s.widgets));
+    final missing = [
+      for (final w in BuiltinWidget.values)
+        if (!have.contains(w)) w,
+    ];
+    return CarinoSheet(
+      title: 'Add widget',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const VEyebrow('Cariño'),
+          const SizedBox(height: 10),
+          if (missing.isEmpty)
+            const VFootnote(
+              'Every Cariño widget is already on the Widgets tab.',
+            )
+          else
+            VListSection(
+              children: [
+                for (final w in missing)
+                  VListRow(
+                    title: widgetName(w),
+                    leading: VIconView(switch (w) {
+                      BuiltinWidget.clock => VIcon.clock,
+                      BuiltinWidget.battery => VIcon.battery,
+                      BuiltinWidget.calendar => VIcon.calendar,
+                      BuiltinWidget.notes => VIcon.edit,
+                    }, size: 18),
+                    trailing: const VIconView(VIcon.plus, size: 18),
+                    onTap: () {
+                      ref
+                          .read(settingsProvider.notifier)
+                          .update(
+                            (s) => s.copyWith(widgets: [...s.widgets, w]),
+                          );
+                      Navigator.of(context).pop();
+                    },
+                  ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}

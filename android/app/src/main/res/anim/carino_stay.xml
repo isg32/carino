@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Cariño stays put (and blurs itself) while the app slides over it. -->
+<translate xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="380"
+    android:fromXDelta="0"
+    android:toXDelta="0" />

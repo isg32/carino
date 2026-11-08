@@ -1,0 +1,38 @@
+name: carino
+description: "A quiet Android home screen: three tabs, one pill, your wallpaper as the only colour."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.7
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^3.5.0
+  path_drawing: ^1.0.1
+  intl: ^0.20.3
+  shared_preferences: ^2.5.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: false
+
+  assets:
+    - assets/fonts/OFL-Doto.txt
+    - assets/fonts/OFL-Inter.txt
+
+  shaders:
+    - shaders/progressive_blur.frag
+
+  fonts:
+    - family: Doto
+      fonts:
+        - asset: assets/fonts/Doto.ttf
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter.ttf
